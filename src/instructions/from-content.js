@@ -3,35 +3,61 @@ import { join, relative, sep } from "node:path";
 import { CONTENT_DIR } from "../version.js";
 
 /**
- * Names that do not survive mechanical derivation.
+ * The prefix every tool ID carries: `{org_name}_{repo_name}`, underscores only.
  *
- * Everything else is named after its own filename, so adding a file to `content/`
- * adds the tool that serves it without anyone deciding what to call it. The one
- * exception is the entry point: `AGENTS.md` would derive to `agents`, which says
- * nothing about which document it is.
+ * A client that connects several servers sees one flat tool list, so a bare name such
+ * as `skill` or `automation` can collide with another server's. The prefix makes every
+ * ID unique to this repository.
  */
-const NAME_OVERRIDES = {
-  "AGENTS.md": "agents_entry_point",
-};
-
-/** The shape an MCP client will accept as a tool name. */
-const TOOL_NAME = /^[a-z][a-z0-9_]{0,63}$/;
+export const ID_PREFIX = "lxagents_skills_security";
 
 /**
- * Derive a tool name from a set-relative path.
+ * The longest ID this repository publishes.
  *
- * The folder is dropped, so `git/branching-strategy.md` is `branching_strategy`
- * rather than a qualified name. That keeps the short names a caller actually types
- * short, and the cost is that two folders holding the same filename would collide —
- * which `buildContentInstructions` treats as a startup error rather than letting the second
+ * `TOOL_NAME` admits 128 characters, which is what the protocol allows. Several clients
+ * cap a tool name at 64, so every ID here is kept to 64, and a base name that would push
+ * an ID past it is shortened in `NAME_OVERRIDES`. The test suite holds every ID to this.
+ */
+export const MAX_PUBLISHED_ID_LENGTH = 64;
+
+/**
+ * IDs that do not survive mechanical derivation, keyed by set-relative path.
+ *
+ * Everything else is named after its own filename, so adding a file to `content/`
+ * adds the tool that serves it without anyone deciding what to call it. An override
+ * carries the full ID, prefix included, and only the base name is ever shortened:
+ * `javascript_typescript` becomes `js_ts` and `javascript` becomes `js`, so that four
+ * guides fit in 64 characters. The owner chose that on 2026-11-11.
+ *
+ * `AGENTS.md` would derive to `agents`, which says nothing about which document it is;
+ * no such file is in the set today, and the override is kept for when one is.
+ */
+const NAME_OVERRIDES = {
+  "AGENTS.md": `${ID_PREFIX}_agents_entry_point`,
+  "references/javascript-general-web-frontend-security.md": `${ID_PREFIX}_js_general_web_frontend_security`,
+  "references/javascript-typescript-nextjs-web-server-security.md": `${ID_PREFIX}_js_ts_nextjs_web_server_security`,
+  "references/javascript-typescript-react-web-frontend-security.md": `${ID_PREFIX}_js_ts_react_web_frontend_security`,
+  "references/javascript-typescript-vue-web-frontend-security.md": `${ID_PREFIX}_js_ts_vue_web_frontend_security`,
+};
+
+/** The shape an MCP client will accept as a tool name: 128 characters at most. */
+const TOOL_NAME = /^[a-z][a-z0-9_]{0,127}$/;
+
+/**
+ * Derive a tool ID from a set-relative path: `{ID_PREFIX}_{base}`.
+ *
+ * The folder is dropped, so `references/python-flask-web-server-security.md` is
+ * `lxagents_skills_security_python_flask_web_server_security` rather than a qualified
+ * name. The cost is that two folders holding the same filename would collide — which
+ * `buildContentInstructions` treats as a startup error rather than letting the second
  * file silently shadow the first.
  */
 function instructionNameFor(relativePath) {
   const override = NAME_OVERRIDES[relativePath];
   if (override) return override;
 
-  const base = relativePath.split("/").pop();
-  return base.replace(/\.md$/, "").toLowerCase().replace(/-/g, "_");
+  const base = relativePath.split("/").pop().replace(/\.md$/, "").toLowerCase().replace(/-/g, "_");
+  return `${ID_PREFIX}_${base}`;
 }
 
 /** Every `.md` under the set root, as set-relative forward-slash paths, sorted. */

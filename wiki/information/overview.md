@@ -16,17 +16,19 @@ identical to the same result produced through the other. `npm test` pins that ag
 
 ## The tools
 
-One tool per markdown file in `content/`, so 12 tools, named after the file each one
-serves — the folder is dropped, the `.md` goes, the name is lowercased and `-` becomes
-`_`. `SKILL.md` is therefore `skill`, and
-`references/python-flask-web-server-security.md` is `python_flask_web_server_security`.
+One tool per markdown file in `content/`, so 12 tools. Each ID is `lxagents_skills_security_`
+plus the name of the file it serves — the folder is dropped, the `.md` goes, the name is
+lowercased and `-` becomes `_`. `SKILL.md` is therefore `lxagents_skills_security_skill`, and
+`references/python-flask-web-server-security.md` is
+`lxagents_skills_security_python_flask_web_server_security`. Four JavaScript guides shorten
+`javascript` to `js` and `javascript_typescript` to `js_ts`, so every ID fits in 64 characters.
 
 **No tool takes an argument.** The names are long because they name the guide they serve
 rather than the folder holding it; that is the cost of a caller being able to read the
 tool list and know what each tool is for.
 
-`automation` is the hub: it lists every other tool with the one condition that activates
-it, and it is the only tool read unprompted. `skill` names the language-and-framework workflow and points at the
+`lxagents_skills_security_automation` is the hub: it lists every other tool with the one condition that activates
+it, and it is the only tool read unprompted. `lxagents_skills_security_skill` names the language-and-framework workflow and points at the
 ten reference files under `references/`, one per language and framework, named
 `<language>-<framework>-<stack>-security.md`. The general file for a language comes
 before the framework-specific one, and the pair is written to be read in that order.

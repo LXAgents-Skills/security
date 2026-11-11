@@ -5,7 +5,12 @@ import { test } from "node:test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { CONTENT_DIR } from "../src/version.js";
-import { CONTENT_INSTRUCTIONS, INSTRUCTION_FILES } from "../src/instructions/from-content.js";
+import {
+  CONTENT_INSTRUCTIONS,
+  ID_PREFIX,
+  INSTRUCTION_FILES,
+  MAX_PUBLISHED_ID_LENGTH,
+} from "../src/instructions/from-content.js";
 import { SERVER_ID, createServer, listTools } from "../src/server.js";
 
 /**
@@ -80,18 +85,18 @@ test("the surface is the twelve tools the set derives", async () => {
     const { tools } = await client.listTools();
 
     assert.deepEqual(tools.map((tool) => tool.name).sort(), [
-      "automation",
-      "golang_general_backend_security",
-      "javascript_express_web_server_security",
-      "javascript_general_web_frontend_security",
-      "javascript_jquery_web_frontend_security",
-      "javascript_typescript_nextjs_web_server_security",
-      "javascript_typescript_react_web_frontend_security",
-      "javascript_typescript_vue_web_frontend_security",
-      "python_django_web_server_security",
-      "python_fastapi_web_server_security",
-      "python_flask_web_server_security",
-      "skill",
+      "lxagents_skills_security_automation",
+      "lxagents_skills_security_golang_general_backend_security",
+      "lxagents_skills_security_javascript_express_web_server_security",
+      "lxagents_skills_security_javascript_jquery_web_frontend_security",
+      "lxagents_skills_security_js_general_web_frontend_security",
+      "lxagents_skills_security_js_ts_nextjs_web_server_security",
+      "lxagents_skills_security_js_ts_react_web_frontend_security",
+      "lxagents_skills_security_js_ts_vue_web_frontend_security",
+      "lxagents_skills_security_python_django_web_server_security",
+      "lxagents_skills_security_python_fastapi_web_server_security",
+      "lxagents_skills_security_python_flask_web_server_security",
+      "lxagents_skills_security_skill",
     ]);
   });
 });
@@ -114,20 +119,38 @@ test("the tool list and the files on disk are a bijection", async () => {
   assert.equal(files.length, 12, `expected the whole set, found ${files.length} files`);
 });
 
-test("every tool name is derived from its own filename", () => {
+test("every tool ID is the prefix plus its own filename, or a shortened override", () => {
   // The derivation is the design: a guide's name is what a caller reads in the
-  // tool list, so it has to survive the trip. Folder stripped, `.md` dropped,
-  // kebab to snake.
+  // tool list, so it has to survive the trip. Prefix, then the filename with the
+  // folder stripped, `.md` dropped, kebab to snake. Only the four JavaScript guides
+  // whose IDs would pass 64 characters are shortened, and only in the base name.
+  const shortened = new Map([
+    ["references/javascript-general-web-frontend-security.md", "js_general_web_frontend_security"],
+    ["references/javascript-typescript-nextjs-web-server-security.md", "js_ts_nextjs_web_server_security"],
+    ["references/javascript-typescript-react-web-frontend-security.md", "js_ts_react_web_frontend_security"],
+    ["references/javascript-typescript-vue-web-frontend-security.md", "js_ts_vue_web_frontend_security"],
+  ]);
+
+  assert.equal(ID_PREFIX, "lxagents_skills_security");
+
   for (const [name, path] of INSTRUCTION_FILES) {
-    const expected = path
-      .split("/")
-      .pop()
-      .replace(/\.md$/, "")
-      .toLowerCase()
-      .replace(/-/g, "_");
+    const base =
+      shortened.get(path) ??
+      path
+        .split("/")
+        .pop()
+        .replace(/\.md$/, "")
+        .toLowerCase()
+        .replace(/-/g, "_");
+    const expected = `${ID_PREFIX}_${base}`;
 
     assert.equal(name, expected, `${path} derives ${name}, expected ${expected}`);
-    assert.match(name, /^[a-z][a-z0-9_]{0,63}$/, `${name} is not a usable tool name`);
+    assert.match(name, /^[a-z][a-z0-9_]{0,127}$/, `${name} is not a usable tool name`);
+    assert.doesNotMatch(name, /-/, `${name} must use underscores only`);
+    assert.ok(
+      name.length <= MAX_PUBLISHED_ID_LENGTH,
+      `${name} is ${name.length} characters; clients that cap tool names at ${MAX_PUBLISHED_ID_LENGTH} would reject it`
+    );
   }
 });
 
@@ -219,23 +242,23 @@ test("the licence is not served as an instruction", async () => {
 });
 
 test("skill is the entry point and routes to the ten reference guides", async () => {
-  // `skill` is the only document in the set that tells a caller how to find the
+  // `lxagents_skills_security_skill` is the only document in the set that tells a caller how to find the
   // other ten, so its routing text is worth pinning rather than trusting.
   //
   // It routes by shape, not by name: it names the directory and the two filename
   // patterns the guides follow, and a caller matches a guide against them. The
   // routing property is therefore that every reference file matches a pattern
-  // `skill` documents, which is asserted below. Note that `skill` does not
+  // `lxagents_skills_security_skill` documents, which is asserted below. Note that `lxagents_skills_security_skill` does not
   // enumerate the ten filenames - see the task record for that and for why.
   await withClient(async ({ client }) => {
     const { tools } = await client.listTools();
 
     assert.ok(
-      tools.map((tool) => tool.name).includes("skill"),
+      tools.map((tool) => tool.name).includes("lxagents_skills_security_skill"),
       "the entry point must be reachable by name"
     );
 
-    const text = textOf(await client.callTool({ name: "skill", arguments: {} }));
+    const text = textOf(await client.callTool({ name: "lxagents_skills_security_skill", arguments: {} }));
 
     assert.match(text, /references directory/);
     assert.match(text, /`<language>-<framework>-<stack>-security\.md`/);
@@ -302,7 +325,7 @@ test("the tool surface reads no credential and needs no key to answer", async ()
   await withClient(async ({ client }) => {
     const text = textOf(
       await client.callTool({
-        name: "golang_general_backend_security",
+        name: "lxagents_skills_security_golang_general_backend_security",
         arguments: {},
       })
     );

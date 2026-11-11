@@ -25,7 +25,8 @@ Node.js 20+, ESM, no build step. One runtime dependency:
   package, frontmatter intact.
 * **A derived tool surface.** `src/instructions/from-content.js` walks `content/` once at
   import and builds one tool per `.md` file, named after its own filename — twelve
-  tools, `automation`, `skill` and the ten reference guides. `src/server.js` registers the frozen
+  tools, `automation`, `skill` and the ten reference guides, each ID prefixed
+  `lxagents_skills_security_`. `src/server.js` registers the frozen
   array as `INSTRUCTION_MODULES`, which is the whole surface. There is no hand-written tool in
   this repository.
 * **No argument anywhere.** Every tool returns one file verbatim with its frontmatter

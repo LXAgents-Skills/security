@@ -16,25 +16,28 @@ to the same result produced through an MCP client. Node.js 20+, ESM, no build st
 
 ## The tools
 
-One tool per file in the set — 11 of them, named after the file each one serves, and none
-of them takes an argument.
+One tool per file in the set — 12 of them, each ID `lxagents_skills_security_` plus the name of
+the file it serves, and none of them takes an argument. Four JavaScript guides use `js` and
+`js_ts` in place of `javascript` and `javascript_typescript`, so that every ID fits in 64
+characters.
 
 | Tool | Returns |
 |---|---|
-| `skill` | `SKILL.md`, the workflow and the router |
-| `golang_general_backend_security` | `references/golang-general-backend-security.md` |
-| `javascript_express_web_server_security` | `references/javascript-express-web-server-security.md` |
-| `javascript_general_web_frontend_security` | `references/javascript-general-web-frontend-security.md` |
-| `javascript_jquery_web_frontend_security` | `references/javascript-jquery-web-frontend-security.md` |
-| `javascript_typescript_nextjs_web_server_security` | `references/javascript-typescript-nextjs-web-server-security.md` |
-| `javascript_typescript_react_web_frontend_security` | `references/javascript-typescript-react-web-frontend-security.md` |
-| `javascript_typescript_vue_web_frontend_security` | `references/javascript-typescript-vue-web-frontend-security.md` |
-| `python_django_web_server_security` | `references/python-django-web-server-security.md` |
-| `python_fastapi_web_server_security` | `references/python-fastapi-web-server-security.md` |
-| `python_flask_web_server_security` | `references/python-flask-web-server-security.md` |
+| `lxagents_skills_security_automation` | `automation.md`, the hub: every other tool and the condition that activates it |
+| `lxagents_skills_security_skill` | `SKILL.md`, the workflow |
+| `lxagents_skills_security_golang_general_backend_security` | `references/golang-general-backend-security.md` |
+| `lxagents_skills_security_javascript_express_web_server_security` | `references/javascript-express-web-server-security.md` |
+| `lxagents_skills_security_javascript_jquery_web_frontend_security` | `references/javascript-jquery-web-frontend-security.md` |
+| `lxagents_skills_security_js_general_web_frontend_security` | `references/javascript-general-web-frontend-security.md` |
+| `lxagents_skills_security_js_ts_nextjs_web_server_security` | `references/javascript-typescript-nextjs-web-server-security.md` |
+| `lxagents_skills_security_js_ts_react_web_frontend_security` | `references/javascript-typescript-react-web-frontend-security.md` |
+| `lxagents_skills_security_js_ts_vue_web_frontend_security` | `references/javascript-typescript-vue-web-frontend-security.md` |
+| `lxagents_skills_security_python_django_web_server_security` | `references/python-django-web-server-security.md` |
+| `lxagents_skills_security_python_fastapi_web_server_security` | `references/python-fastapi-web-server-security.md` |
+| `lxagents_skills_security_python_flask_web_server_security` | `references/python-flask-web-server-security.md` |
 
-Start at `skill`. It names the language-and-framework workflow and routes to the ten
-reference guides.
+Start at `lxagents_skills_security_automation`. It lists every other tool and the one condition that activates
+each, so a caller loads only the guides the request needs.
 
 The surface is derived from `content/` at boot, so adding a guide to the set is the whole
 procedure for adding a tool — there is no tool file to write. See

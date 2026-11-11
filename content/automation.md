@@ -19,26 +19,26 @@ Read this once, at the start of every session. It is the only tool you read unpr
 
 ## The workflow
 
-- `skill` - the request asks for security best practices, a security review or report, or secure-by-default code in Python, JavaScript/TypeScript, or Go. It names the workflow for finding the languages and frameworks in scope.
+- `lxagents_skills_security_skill` - the request asks for security best practices, a security review or report, or secure-by-default code in Python, JavaScript/TypeScript, or Go. It names the workflow for finding the languages and frameworks in scope.
 
 ## Go
 
-- `golang_general_backend_security` - the code in scope is Go: a backend, a service, or anything on `net/http`.
+- `lxagents_skills_security_golang_general_backend_security` - the code in scope is Go: a backend, a service, or anything on `net/http`.
 
 ## JavaScript and TypeScript, server side
 
-- `javascript_express_web_server_security` - the code in scope is an Express server on Node.js.
-- `javascript_typescript_nextjs_web_server_security` - the code in scope is a Next.js application: its server components, route handlers, middleware, or server actions.
+- `lxagents_skills_security_javascript_express_web_server_security` - the code in scope is an Express server on Node.js.
+- `lxagents_skills_security_js_ts_nextjs_web_server_security` - the code in scope is a Next.js application: its server components, route handlers, middleware, or server actions.
 
 ## JavaScript and TypeScript, browser side
 
-- `javascript_general_web_frontend_security` - the code in scope runs in the browser, with or without a framework. Read it before any frontend framework guide.
-- `javascript_jquery_web_frontend_security` - the frontend uses jQuery.
-- `javascript_typescript_react_web_frontend_security` - the frontend uses React, including the client side of a Next.js application.
-- `javascript_typescript_vue_web_frontend_security` - the frontend uses Vue.
+- `lxagents_skills_security_js_general_web_frontend_security` - the code in scope runs in the browser, with or without a framework. Read it before any frontend framework guide.
+- `lxagents_skills_security_javascript_jquery_web_frontend_security` - the frontend uses jQuery.
+- `lxagents_skills_security_js_ts_react_web_frontend_security` - the frontend uses React, including the client side of a Next.js application.
+- `lxagents_skills_security_js_ts_vue_web_frontend_security` - the frontend uses Vue.
 
 ## Python
 
-- `python_django_web_server_security` - the code in scope is a Django application.
-- `python_fastapi_web_server_security` - the code in scope is a FastAPI application.
-- `python_flask_web_server_security` - the code in scope is a Flask application.
+- `lxagents_skills_security_python_django_web_server_security` - the code in scope is a Django application.
+- `lxagents_skills_security_python_fastapi_web_server_security` - the code in scope is a FastAPI application.
+- `lxagents_skills_security_python_flask_web_server_security` - the code in scope is a Flask application.
