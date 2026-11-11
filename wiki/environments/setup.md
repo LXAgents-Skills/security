@@ -27,7 +27,7 @@ There is also a container image, for a host that cannot run Node at all — see
 ## Authentication: HTTP only
 
 Nothing here reaches an external service, so no tool needs a key, and **stdio needs no token
-and no configuration**: the server starts, lists its eleven tools, and answers.
+and no configuration**: the server starts, lists its twelve tools, and answers.
 
 **The HTTP transport requires `MCP_AUTH_TOKEN`**, a bearer token of at least 32 characters. It
 will not start without one, and every request except `GET /healthz` must carry it as

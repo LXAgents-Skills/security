@@ -304,7 +304,7 @@ test("the HTTP transport serves the same tools as stdio", async () => {
       const viaHttp = (await http.listTools()).tools;
       const inMemory = (await memory.client.listTools()).tools;
 
-      assert.equal(viaHttp.length, 11, "one tool per file in the set");
+      assert.equal(viaHttp.length, 12, "one tool per file in the set");
       assert.deepEqual(
         viaHttp.map((tool) => tool.name).sort(),
         inMemory.map((tool) => tool.name).sort()
@@ -391,6 +391,7 @@ test("the server's own source and manifest are unreachable over HTTP", async () 
       assert.deepEqual(
         tools.map((tool) => tool.name).sort(),
         [
+          "automation",
           "golang_general_backend_security",
           "javascript_express_web_server_security",
           "javascript_general_web_frontend_security",
@@ -892,7 +893,7 @@ test("stdio forks nothing, because a worker's stdout would corrupt the stream", 
     await client.connect(transport);
 
     const { tools } = await client.listTools();
-    assert.equal(tools.length, 11, "one tool per file in the set");
+    assert.equal(tools.length, 12, "one tool per file in the set");
     assert.ok(textOf(await client.callTool({ name: "skill", arguments: {} })).length > 0);
 
     // The fork is the thing being ruled out, so it is asserted rather than assumed.

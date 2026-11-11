@@ -71,7 +71,7 @@ test("the CLI list and the MCP tool list agree", async () => {
   });
 });
 
-test("the surface is the eleven tools the set derives", async () => {
+test("the surface is the twelve tools the set derives", async () => {
   // Pinned by name, because the naming is a decision rather than an accident. The
   // long names are the honest consequence of naming a tool after the guide it
   // serves; a rename has to be made here on purpose, not inherited from a rule
@@ -80,6 +80,7 @@ test("the surface is the eleven tools the set derives", async () => {
     const { tools } = await client.listTools();
 
     assert.deepEqual(tools.map((tool) => tool.name).sort(), [
+      "automation",
       "golang_general_backend_security",
       "javascript_express_web_server_security",
       "javascript_general_web_frontend_security",
@@ -110,7 +111,7 @@ test("the tool list and the files on disk are a bijection", async () => {
     files.length,
     "two files must not derive the same tool name"
   );
-  assert.equal(files.length, 11, `expected the whole set, found ${files.length} files`);
+  assert.equal(files.length, 12, `expected the whole set, found ${files.length} files`);
 });
 
 test("every tool name is derived from its own filename", () => {
@@ -242,7 +243,7 @@ test("skill is the entry point and routes to the ten reference guides", async ()
     assert.match(text, /agnostic to the framework/);
 
     for (const [path] of await markdownFiles()) {
-      if (path === "SKILL.md") continue;
+      if (path === "SKILL.md" || path === "automation.md") continue;
 
       const base = path.split("/").pop();
 
@@ -331,4 +332,16 @@ test("the CLI help names every environment variable the server reads", async () 
   for (const name of read) {
     assert.match(help, new RegExp(`\\b${name}\\b`), `--help does not mention ${name}`);
   }
+});
+
+test("automation lists every other file in the set, each once, with a condition", async () => {
+  const hub = await readFile(join(CONTENT_DIR, "automation.md"), "utf8");
+  const listed = [...hub.matchAll(/^- `([a-z0-9_]+)` - \S.*$/gm)].map((match) => match[1]);
+
+  const expected = [...INSTRUCTION_FILES]
+    .filter(([, path]) => path !== "automation.md")
+    .map(([name]) => name);
+
+  assert.deepEqual([...listed].sort(), [...expected].sort(), "automation.md and content/ disagree");
+  assert.equal(new Set(listed).size, listed.length, "a tool is listed twice");
 });
