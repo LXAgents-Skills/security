@@ -11,8 +11,9 @@ Read this before touching anything in `lxagents-security`.
 
 A Skill MCP server and a CLI over one implementation, serving the **global security
 instruction set** read-only — the language and framework guides for Python,
-JavaScript/TypeScript, and Go. Node.js 20+, ESM (`"type": "module"`), **no build
-step** - the published package ships `src/` and Node runs it directly.
+JavaScript/TypeScript, and Go. Node.js 20+, ESM (`"type": "module"`), strict TypeScript.
+`src/` is compiled by `tsc` to `dist/`, which is what Node runs and what the package ships.
+`npm install` builds it through the `prepare` script; `dist/` is never committed.
 
 * Remote: `LXAgents-Skills/security`, default branch `master`.
 * Package: `@lxagents-skills/security`.
@@ -22,8 +23,9 @@ step** - the published package ships `src/` and Node runs it directly.
 
 ```
 AGENTS.md                     entry point, connector bootstrap, trigger table
-package.json                  both bins, no build step
-Dockerfile                    container image; MCP_TRANSPORT=http, node src/index.js
+package.json                  both bins on dist/; build, prepare, typecheck, test scripts
+tsconfig.json                 ES2022, NodeNext, strict; src/ to dist/
+Dockerfile                    two stages: build with tsc, run dist/; MCP_TRANSPORT=http
 .dockerignore                 what the build context must not carry
 content/                      the published security set - the product
   SKILL.md                    the workflow, and the router into references/
@@ -31,25 +33,26 @@ content/                      the published security set - the product
   automation.md               the hub: every other tool and the condition that activates it
   references/                 ten guides, <language>-<framework>-<stack>-security.md
 src/
-  index.js                    entry point; reads the config and calls run()
-  run.js                      picks stdio or streamable HTTP, primary or worker
-  config.js                   every environment variable but the token, read once into a frozen object
-  stdio.js                    the stdio transport
+  index.ts                    entry point; reads the config and calls run()
+  run.ts                      picks stdio or streamable HTTP, primary or worker
+  config.ts                   every environment variable but the token, read once into a frozen object
+  stdio.ts                    the stdio transport
   http/
-    primary.js                forks the workers, respawns them, drains them; checks the token first
-    worker.js                 listens, logs the startup lines, drains on a signal
-    app.js                    the express application as a pure factory - builds, never listens
-    auth.js                   the bearer token: tokenProblem, configuredToken, requireBearerToken
-    rpc-error.js              the one JSON-RPC error envelope every refusal uses
-  server.js                   builds the McpServer and registers the generated surface; exports listTools()
-  cli.js                      the CLI: help, version, tools, serve
-  version.js                  ROOT, CONTENT_DIR, and the version out of package.json
+    primary.ts                forks the workers, respawns them, drains them; checks the token first
+    worker.ts                 listens, logs the startup lines, drains on a signal
+    app.ts                    the express application as a pure factory - builds, never listens
+    auth.ts                   the bearer token: tokenProblem, configuredToken, requireBearerToken
+    rpc-error.ts              the one JSON-RPC error envelope every refusal uses
+  server.ts                   builds the McpServer and registers the generated surface; exports listTools()
+  cli.ts                      the CLI: help, version, tools, serve
+  version.ts                  ROOT, CONTENT_DIR, and the version out of package.json
   instructions/
-    from-content.js           builds the whole instruction surface from content/, once, at import
+    from-content.ts           builds the whole instruction surface from content/, once, at import
 test/
-  server.test.js              bijection, derivation, no-argument surface, served totals, parity
-  http.test.js                the streamable HTTP transport and the workers, over a real socket
-  config.test.js              the configuration defaults and parsing
+  tsconfig.json               extends the root config with noEmit, so typecheck covers the tests
+  server.test.ts              bijection, derivation, no-argument surface, served totals, parity
+  http.test.ts                the streamable HTTP transport and the workers, over a real socket
+  config.test.ts              the configuration defaults and parsing
 wiki/                         human documentation
 .agents/                      this set - rules, agent wiki, memory, indexes
 ```
@@ -58,8 +61,10 @@ wiki/                         human documentation
 
 | Command | What it does |
 |---|---|
-| `npm install` | Installs `@modelcontextprotocol/sdk`. |
-| `npm test` | `node --test`. The whole suite; there is no watch mode. |
+| `npm install` | Installs the dependencies, then compiles `src/` to `dist/` (`prepare`). |
+| `npm run build` | `tsc`: recompiles `dist/` after a change to `src/`. |
+| `npm run typecheck` | `tsc -p test/tsconfig.json`: checks `src/` and `test/` together, writes nothing. |
+| `npm test` | Builds first (`pretest`), then `node --import tsx --test test/*.test.ts`. The suite spawns the compiled `dist/` server; there is no watch mode. |
 | `npm run cli -- tools` | Lists registered tools through the CLI surface. |
 | `npm start` | Serves over stdio. |
 | `npm run start:http` | Serves over streamable HTTP on `127.0.0.1:PORT` (default 3000). Loopback, so no token is needed. Off loopback, **no token, no start.** |
@@ -69,17 +74,17 @@ wiki/                         human documentation
 
 | Variable | Read by | Effect |
 |---|---|---|
-| `MCP_TRANSPORT` | `src/config.js` | `stdio` (default) or `http` (Streamable HTTP on `/mcp`). |
-| `PORT` | `src/config.js` | HTTP port, default `3000`. |
-| `HOST` | `src/config.js` | Interface the HTTP transport binds, default `0.0.0.0` — every IPv4 interface. |
-| `MCP_ALLOWED_HOSTS` | `src/config.js` | Comma-separated `Host` allow-list for the HTTP transport. **Unset means none is applied**; the server says so on startup. |
-| `MCP_CLUSTER_WORKERS` | `src/config.js` | HTTP worker count, default one per CPU. **`1` forks nothing.** stdio never forks. |
-| `MCP_AUTH_TOKEN` | `src/http/auth.js`, checked in `src/http/primary.js` | **A secret.** The bearer token every HTTP request except `GET /healthz` must carry; at least 32 characters; HTTP off loopback will not start without it; optional on loopback, enforced if set; stdio never reads it. |
+| `MCP_TRANSPORT` | `src/config.ts` | `stdio` (default) or `http` (Streamable HTTP on `/mcp`). |
+| `PORT` | `src/config.ts` | HTTP port, default `3000`. |
+| `HOST` | `src/config.ts` | Interface the HTTP transport binds, default `0.0.0.0` — every IPv4 interface. |
+| `MCP_ALLOWED_HOSTS` | `src/config.ts` | Comma-separated `Host` allow-list for the HTTP transport. **Unset means none is applied**; the server says so on startup. |
+| `MCP_CLUSTER_WORKERS` | `src/config.ts` | HTTP worker count, default one per CPU. **`1` forks nothing.** stdio never forks. |
+| `MCP_AUTH_TOKEN` | `src/http/auth.ts`, checked in `src/http/primary.ts` | **A secret.** The bearer token every HTTP request except `GET /healthz` must carry; at least 32 characters; HTTP off loopback will not start without it; optional on loopback, enforced if set; stdio never reads it. |
 
 There is no `API_KEY`: nothing here reaches an external service, and no tool reads a credential.
 `MCP_ALLOWED_HOSTS` is a filter, not a credential — it decides which `Host` values are answered,
 not who is asking; `MCP_AUTH_TOKEN` is what decides that. **HTTP tests need the token too:** the
-harness in `test/http.test.js` hands every child the variable and the SDK client the matching
+harness in `test/http.test.ts` hands every child the variable and the SDK client the matching
 header, so a test that spawns the server any other way, or fetches `/mcp` raw, must do the same
 or it will read a `401` as a failure of the thing it is testing. Blank it
 (`MCP_AUTH_TOKEN: ""`) with `HOST: "0.0.0.0"` to test the refusal to start; blank on the
@@ -87,10 +92,10 @@ suite's loopback bind is the local, token-free case.
 
 ## The two surfaces
 
-The tool surface is derived, not declared. `src/instructions/from-content.js` walks `content/`
+The tool surface is derived, not declared. `src/instructions/from-content.ts` walks `content/`
 once at import and builds one tool per `.md` file, naming each after its own filename.
-`src/server.js` registers that array and exports `listTools()`; `src/cli.js` imports
-`listTools()` from it rather than keeping its own, and `test/server.test.js` asserts that
+`src/server.ts` registers that array and exports `listTools()`; `src/cli.ts` imports
+`listTools()` from it rather than keeping its own, and `test/server.test.ts` asserts that
 what the CLI would print matches what an MCP client receives from `tools/list`. Adding a
 guide to `content/` therefore adds a tool to both, and there is no way to add it to only
 one without failing the suite.
@@ -110,11 +115,11 @@ Eleven tools today. None of them takes an argument.
   hand-rolled single-line parser, not a YAML dependency.
 * **Nothing is unserved except by not being `.md`.** `content/LICENSE.txt` has no tool
   because it is not markdown. Nothing else in the set opts out.
-* **A fresh `McpServer` per HTTP request.** `src/http/app.js` builds and closes one per
+* **A fresh `McpServer` per HTTP request.** `src/http/app.ts` builds and closes one per
   request because `McpServer` holds per-connection state. Do not hoist it to module
   scope, and note that with workers on, that request may be answered by any of N
   separate processes.
-* **`src/http/app.js` must not call `listen()`.** It is a factory; `src/http/worker.js` owns the
+* **`src/http/app.ts` must not call `listen()`.** It is a factory; `src/http/worker.ts` owns the
   port and the worker count. A file that both builds and binds cannot be tested without
   opening one.
 * **An unset `MCP_ALLOWED_HOSTS` is the guard being off.** Not "allow nothing". The
@@ -128,7 +133,8 @@ Eleven tools today. None of them takes an argument.
 * **Do not add a write path, and do not add an argument.** The read-only surface is the
   property a consuming repository depends on, and no argument means there is no path to
   traverse with.
-* **`version.js` reads `package.json` at import** via a path relative to `src/`, and
+* **`version.ts` reads `package.json` at import** via a path one level above its own
+  directory, which holds from `src/` under `tsx` and from `dist/` when compiled, and
   holds `CONTENT_DIR` for the generator. Moving it breaks the version and every served
   file without failing a test.
 

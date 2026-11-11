@@ -12,6 +12,9 @@ stdout, or reach it over HTTP. What the image buys either way:
 * **A pinned toolchain.** `node:22-alpine` instead of whatever is on the host.
 * **A clean dependency tree.** `npm ci --ignore-scripts --omit=dev` from the lockfile.
   `npm ci` fails rather than resolving something the lockfile does not contain.
+* **No compiler at runtime.** The image builds in two stages: the first installs the full
+  tree and runs `npm run build`, the second installs production dependencies only and
+  copies the compiled `dist/` across. TypeScript and the `src/` sources never reach it.
 * **A non-root process.** The image ends as `USER node`.
 * **Isolation from the host**, which matters if the client is on a different machine.
 * **A network boundary**, if you run it as a service.
@@ -100,10 +103,10 @@ default rather than the exception.
 | Path | Why |
 |---|---|
 | `content/` | The product. Copied, not generated — the only thing a repository change is expected to alter. |
-| `src/` | The server. |
+| `dist/` | The server, compiled from `src/` in the build stage. |
 | `package.json`, `package-lock.json` | Dependency resolution only. |
 
-`.dockerignore` keeps the rest out: `node_modules`, `test`, `wiki`, `.agents`,
+`.dockerignore` keeps the rest out: `node_modules`, a host-built `dist`, `test`, `wiki`, `.agents`,
 `AGENTS.md`, `README.md`, `Dockerfile`, `.git`, local clones under `mcps/`, and local
 noise. **The image therefore cannot run its own test suite** — `npm test` needs `test/`
 — and the suite is a gate on the repository, not on the artifact.
@@ -124,12 +127,14 @@ With stdin closed the server exits at once, so this checks that the entrypoint r
 and Node starts — not that the set is correct. To check the set, run `npm test` in a
 checkout.
 
-> **This image has never been built.** Docker was not available in the environment this
-> was written in, so neither `EXPOSE`, nor the `MCP_TRANSPORT` default, nor the entrypoint
-> override has been verified by a build. What has been checked is that every `COPY`
-> source resolves against the real tree, that every `.dockerignore` entry matches
-> something in it, and that `npm ci --ignore-scripts --omit=dev` succeeds against
-> `package.json` and `package-lock.json` alone. Treat the rest as written-and-untested.
+> **This image has never been built end to end.** The environment this was written in
+> could not reach the npm registry from inside a build, so neither `EXPOSE`, nor the
+> `MCP_TRANSPORT` default, nor the entrypoint override has been verified by a build. What
+> has been checked is that every `COPY` source resolves against the real tree, that every
+> `.dockerignore` entry matches something in it, and that the runtime stage's steps work
+> outside Docker: `npm ci --ignore-scripts --omit=dev` against the lockfile, then a
+> compiled `dist/` beside `content/`, answers `/healthz` over HTTP and `tools/list` over
+> stdio with no compiler installed. Treat the rest as written-and-untested.
 
 ## Related pages
 

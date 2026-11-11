@@ -76,3 +76,15 @@ Verified: typecheck clean; 69 of 69 tests pass; `tools` output is byte-identical
 serves 12 tools; the runtime stage simulated outside Docker (production install, no compiler)
 answers `/healthz` and `tools/list` over stdio. `docker build` itself could not be run in the
 session's sandbox: its build containers have no route to the npm registry.
+
+### Task 4 - docs/typescript
+
+Landed. README, `AGENTS.md`, `wiki/information/` (overview, architecture) and
+`wiki/environments/` (setup, env, docker) describe TypeScript in `src/`, the `prepare` build
+into `dist/`, the new scripts, the two-stage image, and the registration path
+`dist/index.js`; setup says an existing `src/index.js` registration must change.
+`.agents/rules/repository.md` replaces "must not introduce a build step" with "no committed
+`dist/`, no second build tool, no `any`", which the owner's request for a TypeScript build
+overturned. `repository-map.md`, `tool-authoring.md` and `repository-state.md` name the `.ts`
+files. Release logs and older task records keep their `.js` names, because they describe what
+was true then.

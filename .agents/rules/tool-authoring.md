@@ -8,9 +8,9 @@ description: How a tool comes to exist - the surface is derived from content/, s
 **Adding a markdown file to `content/` is adding a tool.** There is no tool file to
 write, no import to add, and no entry to put in an array.
 
-The surface is built at boot by `src/instructions/from-content.js`, which walks `CONTENT_DIR`
+The surface is built at boot by `src/instructions/from-content.ts`, which walks `CONTENT_DIR`
 once and makes one tool per `.md` file it finds. A contributor who follows the older
-text in this file — write `src/tools/{name}.js`, import it, add it to `TOOL_MODULES` —
+text in this file — write `src/tools/{name}.ts`, import it, add it to `TOOL_MODULES` —
 would hand-write a module for a guide that already has a tool, and put two tools for one
 file on the surface.
 
@@ -34,7 +34,7 @@ cannot collide. So the folder is dropped, and the ten reference guides get long 
 consequence of naming a tool after the guide it serves rather than after its folder — a
 caller reading the tool list can tell what each one is without opening anything.
 
-`NAME_OVERRIDES` in `src/instructions/from-content.js` is the escape hatch, for a filename that
+`NAME_OVERRIDES` in `src/instructions/from-content.ts` is the escape hatch, for a filename that
 derives a name saying nothing useful or too long. **Every published ID is held to 64
 characters**, because several clients cap tool names there; the owner chose on 2026-11-11 to
 shorten only the base name, never the prefix, so four JavaScript guides use `js` and `js_ts`.
@@ -91,7 +91,7 @@ has already been validated and read.
 
 ## Tests
 
-`test/server.test.js` owns the surface, and it is written to fail if the derivation is
+`test/server.test.ts` owns the surface, and it is written to fail if the derivation is
 broken:
 
 * every `.md` under `content/` has exactly one tool, and every tool maps back to one
@@ -103,5 +103,5 @@ broken:
 * the total served text equals the total text on disk;
 * `LICENSE.txt` is not served.
 
-**If a change to `src/server.js` or `src/instructions/from-content.js` makes any of those true
+**If a change to `src/server.ts` or `src/instructions/from-content.ts` makes any of those true
 of a new tool, the test that should catch it does not exist yet — write it.**

@@ -12,14 +12,21 @@ same result produced in the other.
 
 ## Requirements
 
-Node.js 20 or newer. There is no build step.
+Node.js 20 or newer.
 
 ```bash
-npm install
-npm test
+npm install       # installs, then compiles src/ to dist/ (the prepare script)
+npm test          # builds, then runs the suite through tsx
 ```
 
-Two dependencies: `@modelcontextprotocol/sdk` and `zod`.
+`npm run build` recompiles after a change to `src/`; the server always runs from `dist/`.
+`npm run typecheck` checks `src/` and `test/` together without writing anything.
+
+Three runtime dependencies: `@modelcontextprotocol/sdk`, `express` and `zod`. TypeScript,
+`tsx` and the type packages are devDependencies, needed to build and test only.
+
+An existing local registration that points at `src/index.js` must be changed to
+`dist/index.js`: the source is TypeScript now, and Node runs the compiled output.
 
 There is also a container image, for a host that cannot run Node at all — see
 [`docker.md`](docker.md). It is not built by `npm test` and has never been built.
@@ -57,7 +64,7 @@ npm install -g @lxagents-skills/security
 Without installing anything:
 
 ```bash
-node src/cli.js --help
+node dist/cli.js --help
 npm run cli -- --help
 ```
 
@@ -81,7 +88,7 @@ skill                                              Perform language and framewor
 One line per file in `content/`, named after that file. Eleven lines today; one more
 whichever guide is added to the set next.
 
-The list comes from `listTools()` in `src/server.js` — the same list the Skill MCP server
+The list comes from `listTools()` in `src/server.ts` — the same list the Skill MCP server
 registers — so the two surfaces cannot disagree.
 
 ### Exit codes
@@ -105,7 +112,7 @@ client at it. Either bin works: `lxagents-security-server` is the server directl
   "mcpServers": {
     "lxagents-security": {
       "command": "node",
-      "args": ["src/index.js"],
+      "args": ["dist/index.js"],
       "cwd": "/path/to/security"
     }
   }

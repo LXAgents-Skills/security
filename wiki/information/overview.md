@@ -65,8 +65,10 @@ with and no filesystem I/O on the read path. Containment is a property of the
 
 ## Requirements
 
-Node.js 20 or newer. Two dependencies (`@modelcontextprotocol/sdk` and `zod`), and **no build step** —
-the package ships source and Node runs it directly.
+Node.js 20 or newer. Three runtime dependencies (`@modelcontextprotocol/sdk`, `express` and
+`zod`). The source is TypeScript in `src/`, compiled by `tsc` to `dist/`, which is what Node
+runs. `npm install` builds it through the `prepare` script, so a clone needs no extra step;
+`dist/` is never committed.
 
 ## Related pages
 
