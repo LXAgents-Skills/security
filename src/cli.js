@@ -18,6 +18,7 @@ Options
 
 Environment
   MCP_TRANSPORT    stdio (default) or http
+  MCP_AUTH_TOKEN   bearer token, 32+ characters; required for http, unused by stdio
   PORT             HTTP port, default 3000
   HOST             HTTP interface, default 0.0.0.0
   MCP_ALLOWED_HOSTS  comma-separated Host allow-list; unset means none is applied

@@ -35,7 +35,7 @@ export const BODY_LIMIT_BYTES = 4 * 1024 * 1024;
  *
  * Unset — or set to nothing but commas and spaces — means the check is skipped rather
  * than guessed at. `MCP_DNS_REBINDING_PROTECTION` used to default to `false`, which
- * made these allow-lists inert; see `.agents/memory/tasks/activation-security.md`. A
+ * made these allow-lists inert. A
  * wrong allow-list silently refusing every request is a worse failure than an absent
  * one, and this server serves public markdown either way, so the absence is reported
  * on startup rather than papered over with a default list.
