@@ -16,7 +16,7 @@ file on the surface.
 
 ## The derivation
 
-A tool's name comes from its own filename:
+A tool's ID is `lxagents_skills_security_` followed by a name from its own filename:
 
 1. take the basename, dropping the folder;
 2. drop `.md`;
@@ -25,16 +25,21 @@ A tool's name comes from its own filename:
 
 | File | Tool |
 |---|---|
-| `SKILL.md` | `skill` |
-| `references/python-flask-web-server-security.md` | `python_flask_web_server_security` |
+| `SKILL.md` | `lxagents_skills_security_skill` |
+| `references/python-flask-web-server-security.md` | `lxagents_skills_security_python_flask_web_server_security` |
+| `references/javascript-typescript-react-web-frontend-security.md` | `lxagents_skills_security_js_ts_react_web_frontend_security` (override) |
 
-So the folder is dropped, and the ten reference guides get long names. That is the honest
+The prefix is `{org_name}_{repo_name}` with underscores, so two servers connected to one client
+cannot collide. So the folder is dropped, and the ten reference guides get long names. That is the honest
 consequence of naming a tool after the guide it serves rather than after its folder — a
 caller reading the tool list can tell what each one is without opening anything.
 
 `NAME_OVERRIDES` in `src/instructions/from-content.js` is the escape hatch, for a filename that
-derives a name saying nothing useful. **This repository has no overrides.** Adding one is
-a naming decision, and it belongs to the owner, not to whoever happened to add the file.
+derives a name saying nothing useful or too long. **Every published ID is held to 64
+characters**, because several clients cap tool names there; the owner chose on 2026-11-11 to
+shorten only the base name, never the prefix, so four JavaScript guides use `js` and `js_ts`.
+An override carries the full ID, prefix included. Adding one is a naming decision, and it
+belongs to the owner, not to whoever happened to add the file.
 
 ## The surface is read-only
 
@@ -56,7 +61,8 @@ cannot be routed on should not start:
 
 * **A `description:` in the frontmatter.** It is the tool description, and it is what a
   caller routes on. A file without one publishes a tool nobody can choose.
-* **A filename that derives a valid MCP tool name** — `^[a-z][a-z0-9_]{0,63}$`. A name
+* **A filename that derives a valid MCP tool name** — `^[a-z][a-z0-9_]{0,127}$`, and the
+  test suite holds every ID to 64 characters. A name
   starting with a digit or holding a character the client will not accept is a startup
   error naming the file and the fix.
 * **A filename no other file derives.** Two files deriving one name would silently shadow

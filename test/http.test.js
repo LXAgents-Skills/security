@@ -11,6 +11,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { BODY_LIMIT_BYTES, createApp } from "../src/http/app.js";
 import { MIN_TOKEN_LENGTH, configuredToken, tokenProblem } from "../src/http/auth.js";
 import { SERVER_ID, createServer, listTools } from "../src/server.js";
+import { ID_PREFIX } from "../src/instructions/from-content.js";
 
 /**
  * The Streamable HTTP transport, over a real socket.
@@ -285,7 +286,7 @@ test("a server process writes nothing to stdout", async () => {
 
     try {
       await client.listTools();
-      textOf(await client.callTool({ name: "skill", arguments: {} }));
+      textOf(await client.callTool({ name: "lxagents_skills_security_skill", arguments: {} }));
     } finally {
       await client.close();
     }
@@ -351,7 +352,7 @@ test("a tool call over HTTP returns the file byte-identically", async () => {
     try {
       const text = textOf(
         await client.callTool({
-          name: "python_flask_web_server_security",
+          name: "lxagents_skills_security_python_flask_web_server_security",
           arguments: {},
         })
       );
@@ -391,18 +392,18 @@ test("the server's own source and manifest are unreachable over HTTP", async () 
       assert.deepEqual(
         tools.map((tool) => tool.name).sort(),
         [
-          "automation",
-          "golang_general_backend_security",
-          "javascript_express_web_server_security",
-          "javascript_general_web_frontend_security",
-          "javascript_jquery_web_frontend_security",
-          "javascript_typescript_nextjs_web_server_security",
-          "javascript_typescript_react_web_frontend_security",
-          "javascript_typescript_vue_web_frontend_security",
-          "python_django_web_server_security",
-          "python_fastapi_web_server_security",
-          "python_flask_web_server_security",
-          "skill",
+          "lxagents_skills_security_automation",
+          "lxagents_skills_security_golang_general_backend_security",
+          "lxagents_skills_security_javascript_express_web_server_security",
+          "lxagents_skills_security_javascript_jquery_web_frontend_security",
+          "lxagents_skills_security_js_general_web_frontend_security",
+          "lxagents_skills_security_js_ts_nextjs_web_server_security",
+          "lxagents_skills_security_js_ts_react_web_frontend_security",
+          "lxagents_skills_security_js_ts_vue_web_frontend_security",
+          "lxagents_skills_security_python_django_web_server_security",
+          "lxagents_skills_security_python_fastapi_web_server_security",
+          "lxagents_skills_security_python_flask_web_server_security",
+          "lxagents_skills_security_skill",
         ]
       );
     } finally {
@@ -433,9 +434,9 @@ test("GET /mcp is refused rather than served", async () => {
 test("concurrent requests do not share state", async () => {
   await withServer({}, async ({ url }) => {
     const tools = [
-      "skill",
-      "golang_general_backend_security",
-      "javascript_express_web_server_security",
+      "lxagents_skills_security_skill",
+      "lxagents_skills_security_golang_general_backend_security",
+      "lxagents_skills_security_javascript_express_web_server_security",
     ];
 
     // The transport builds a fresh McpServer per request, so three clients answering
@@ -457,7 +458,7 @@ test("concurrent requests do not share state", async () => {
 
       // The first client still works after the other two have been talking.
       assert.ok(textOf(
-        await clients[0].callTool({ name: "skill", arguments: {} })
+        await clients[0].callTool({ name: "lxagents_skills_security_skill", arguments: {} })
       ).length > 0);
     } finally {
       await Promise.all(clients.map((client) => client.close()));
@@ -618,7 +619,7 @@ test("a body over the limit is refused, and says so in the JSON-RPC envelope", a
       jsonrpc: "2.0",
       id: 1,
       method: "tools/call",
-      params: { name: "skill", arguments: {}, padding: "x".repeat(BODY_LIMIT_BYTES) },
+      params: { name: "lxagents_skills_security_skill", arguments: {}, padding: "x".repeat(BODY_LIMIT_BYTES) },
     });
     assert.ok(oversized.length > BODY_LIMIT_BYTES, "the payload must actually exceed the limit");
 
@@ -732,9 +733,9 @@ test("concurrent tool calls stay isolated when they cross a process boundary", a
     assert.ok(await waitForCount("serving over http", 2), "the fork did not happen");
 
     const tools = [
-      "python_flask_web_server_security",
-      "javascript_express_web_server_security",
-      "golang_general_backend_security",
+      "lxagents_skills_security_python_flask_web_server_security",
+      "lxagents_skills_security_javascript_express_web_server_security",
+      "lxagents_skills_security_golang_general_backend_security",
     ];
     const clients = await Promise.all(tools.map(() => connect(url)));
 
@@ -747,10 +748,10 @@ test("concurrent tool calls stay isolated when they cross a process boundary", a
         const text = textOf(result);
         assert.ok(text.length > 500, `${tools[i]} came back empty`);
         // The file's own name is in its frontmatter, so this distinguishes "answered
-        // with the right file" from "answered with some file". Tool names are derived
-        // from filenames by replacing hyphens with underscores, so the served text
-        // carries the hyphenated form - that derivation is what is being inverted here.
-        const ownName = tools[i].replace(/_/g, "-");
+        // with the right file" from "answered with some file". Tool IDs are the prefix
+        // plus the filename with hyphens as underscores, so the served text carries the
+        // hyphenated form - that derivation is what is being inverted here.
+        const ownName = tools[i].slice(`${ID_PREFIX}_`.length).replace(/_/g, "-");
         assert.ok(
           text.includes(`name: ${ownName}`),
           `${tools[i]} was answered with another request's file`
@@ -894,7 +895,7 @@ test("stdio forks nothing, because a worker's stdout would corrupt the stream", 
 
     const { tools } = await client.listTools();
     assert.equal(tools.length, 12, "one tool per file in the set");
-    assert.ok(textOf(await client.callTool({ name: "skill", arguments: {} })).length > 0);
+    assert.ok(textOf(await client.callTool({ name: "lxagents_skills_security_skill", arguments: {} })).length > 0);
 
     // The fork is the thing being ruled out, so it is asserted rather than assumed.
     // The handshake above already implies it - a forked worker writing its startup

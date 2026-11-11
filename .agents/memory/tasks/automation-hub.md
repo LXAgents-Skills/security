@@ -35,3 +35,15 @@ condition that activates it. Its frontmatter `name` and `description` match the 
 automation tool, with the em dash the owner's text had lost. A new test fails when the hub and the
 served names disagree in either direction or a tool is listed twice. The server's `instructions`
 text now says to start at `automation`. 64 tests pass.
+
+### Task 3 — feat/prefixed-tool-ids
+
+Landed. Every ID is `lxagents_skills_security_{base}`, built from the exported `ID_PREFIX`.
+`TOOL_NAME` admits 128 characters as the owner asked. The owner then chose to keep every
+published ID within 64 characters by shortening the base name only, never the prefix. Four
+overrides do that: `javascript_general` becomes `js_general`, and `javascript_typescript`
+becomes `js_ts` for Next.js, React and Vue. The longest ID is now 64 characters
+(`..._javascript_jquery_web_frontend_security`). The `AGENTS.md` override is prefixed too.
+The derivation test now checks the prefix, the underscores-only rule, the 64-character cap and
+the four overrides. `automation.md`, the server instructions, the README, the overview and the
+tool-authoring rule all use the new IDs. 64 tests pass.

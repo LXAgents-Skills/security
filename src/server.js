@@ -52,7 +52,7 @@ export function createServer({ version }) {
     { name: SERVER_ID, title: SERVER_TITLE, version },
     {
       instructions:
-        "The global security set for python, javascript/typescript, and go, served read-only. Every file in the set is its own tool. Start at automation: it lists every other tool and the one condition that activates each, so you call only the guides the request needs. skill names the language and framework workflow. Read the general guide for the language before the framework-specific one - they are written to be read in that order. No tool takes an argument.",
+        "The global security set for python, javascript/typescript, and go, served read-only. Every file in the set is its own tool. Start at lxagents_skills_security_automation: it lists every other tool and the one condition that activates each, so you call only the guides the request needs. lxagents_skills_security_skill names the language and framework workflow. Read the general guide for the language before the framework-specific one - they are written to be read in that order. No tool takes an argument.",
     }
   );
 
