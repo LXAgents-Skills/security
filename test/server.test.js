@@ -5,7 +5,7 @@ import { test } from "node:test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { CONTENT_DIR } from "../src/version.js";
-import { CONTENT_TOOLS, TOOL_FILES } from "../src/tools/from-content.js";
+import { CONTENT_INSTRUCTIONS, INSTRUCTION_FILES } from "../src/instructions/from-content.js";
 import { SERVER_ID, createServer, listTools } from "../src/server.js";
 
 /**
@@ -101,12 +101,12 @@ test("the tool list and the files on disk are a bijection", async () => {
   // tool serving something that is no longer in the set. Together they are what
   // makes "add a guide, get a tool" a property rather than a hope.
   const files = (await markdownFiles()).map(([path]) => path);
-  const served = [...TOOL_FILES.values()].sort((a, b) => a.localeCompare(b));
+  const served = [...INSTRUCTION_FILES.values()].sort((a, b) => a.localeCompare(b));
 
   assert.deepEqual(served, files);
 
   assert.equal(
-    TOOL_FILES.size,
+    INSTRUCTION_FILES.size,
     files.length,
     "two files must not derive the same tool name"
   );
@@ -117,7 +117,7 @@ test("every tool name is derived from its own filename", () => {
   // The derivation is the design: a guide's name is what a caller reads in the
   // tool list, so it has to survive the trip. Folder stripped, `.md` dropped,
   // kebab to snake.
-  for (const [name, path] of TOOL_FILES) {
+  for (const [name, path] of INSTRUCTION_FILES) {
     const expected = path
       .split("/")
       .pop()
@@ -131,10 +131,10 @@ test("every tool name is derived from its own filename", () => {
 });
 
 test("every tool has a distinct name and a description to route on", () => {
-  const names = CONTENT_TOOLS.map(({ config }) => config.name);
+  const names = CONTENT_INSTRUCTIONS.map(({ config }) => config.name);
   assert.equal(new Set(names).size, names.length, "tool names must be unique");
 
-  for (const { config } of CONTENT_TOOLS) {
+  for (const { config } of CONTENT_INSTRUCTIONS) {
     assert.ok(
       config.description && config.description.length > 0,
       `${config.name} needs a description`
@@ -166,7 +166,7 @@ test("no tool takes an argument", async () => {
 
 test("every tool returns its own file, whole and with frontmatter", async () => {
   await withClient(async ({ client }) => {
-    for (const [name, path] of TOOL_FILES) {
+    for (const [name, path] of INSTRUCTION_FILES) {
       const text = textOf(await client.callTool({ name, arguments: {} }));
       const onDisk = await readFile(join(CONTENT_DIR, path), "utf8");
 
@@ -185,7 +185,7 @@ test("the whole set is served and nothing is served twice", async () => {
   // name; served short would mean a guide silently dropped from the surface.
   await withClient(async ({ client }) => {
     let total = 0;
-    for (const [name] of TOOL_FILES) {
+    for (const [name] of INSTRUCTION_FILES) {
       total += textOf(await client.callTool({ name, arguments: {} })).length;
     }
 
@@ -208,7 +208,7 @@ test("the licence is not served as an instruction", async () => {
     const { tools } = await client.listTools();
 
     for (const tool of tools) {
-      assert.notEqual(TOOL_FILES.get(tool.name), "LICENSE.txt");
+      assert.notEqual(INSTRUCTION_FILES.get(tool.name), "LICENSE.txt");
     }
 
     const names = tools.map((tool) => tool.name);

@@ -42,3 +42,15 @@ third merge the tree equals `origin/release/2.0.0`. `feat/http-token-auth` confl
 `Dockerfile`, `wiki/environments/docker.md` and the token-auth record; `chore/http-token-auth-plan`
 conflicted in the record again. Every conflict was resolved to master's side, which is the
 released `2.0.0` state the owner asked to finish on. `release/2.0.0` merged cleanly.
+
+### Task 3 — refactor/skills-terminology
+
+Landed. `src/tools/` is `src/instructions/`; `TOOL_MODULES`, `CONTENT_TOOLS` and `TOOL_FILES` are
+`INSTRUCTION_MODULES`, `CONTENT_INSTRUCTIONS` and `INSTRUCTION_FILES`. The organization is
+`LXAgents-Skills` and the package `@lxagents-skills/security` in `package.json`, the lockfile,
+README, LICENSE, the wiki and the repository map. Self-descriptions say Skill MCP server; mentions
+of the protocol, its clients and the Inspector keep MCP. Released logs and closed task records keep
+the old names. `npm test` runs 58 tests, all passing.
+
+Open for the owner: the package name changed, so the next publish is a new package. Its version
+needs approval, and `npm deprecate` on `@lxagents-mcp/security` is worth doing once it ships.

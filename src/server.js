@@ -1,5 +1,5 @@
 /*
- * The MCP server.
+ * The Skill MCP server.
  *
  * A fresh instance is created per connection because McpServer holds
  * per-connection state.
@@ -11,7 +11,7 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-import { CONTENT_TOOLS } from "./tools/from-content.js";
+import { CONTENT_INSTRUCTIONS } from "./instructions/from-content.js";
 
 export const SERVER_ID = "lxagents-security";
 export const SERVER_TITLE = "LXAgents Security";
@@ -26,7 +26,7 @@ export const SERVER_TITLE = "LXAgents Security";
  * A tool registered anywhere else is invisible to `listTools()`, to the CLI, and
  * to the client's `tools/list`. This array is the whole surface.
  */
-const TOOL_MODULES = Object.freeze(CONTENT_TOOLS);
+const INSTRUCTION_MODULES = Object.freeze(CONTENT_INSTRUCTIONS);
 
 /**
  * The registered tools, as name/description pairs.
@@ -37,7 +37,7 @@ const TOOL_MODULES = Object.freeze(CONTENT_TOOLS);
  * @returns {{ name: string, description: string }[]}
  */
 export function listTools() {
-  return TOOL_MODULES.map(({ config }) => ({
+  return INSTRUCTION_MODULES.map(({ config }) => ({
     name: config.name,
     description: config.description,
   }));
@@ -60,7 +60,7 @@ export function createServer({ version }) {
   // one that can be reached. It is kept rather than a `registerTool` call with an
   // `inputSchema` key, because that key is where an argument would have to be
   // added - and one would have to be added here, by hand, to bypass the generator.
-  for (const { config, handler } of TOOL_MODULES) {
+  for (const { config, handler } of INSTRUCTION_MODULES) {
     server.tool(config.name, config.description, handler);
   }
 

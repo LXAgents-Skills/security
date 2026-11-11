@@ -5,23 +5,23 @@ description: Rules specific to lxagents-security - the dual-surface contract, th
 
 # Repository Rules
 
-`lxagents-security` is a dual-purpose MCP server and CLI over one implementation, and
+`lxagents-security` is a dual-purpose Skill MCP server and CLI over one implementation, and
 it serves the global security set from `content/` read-only. Both facts constrain what
 may be changed here.
 
 ## Mode and shared set
 
 This repository is a **Mode B consumer**. The shared instruction set is resolved
-through the `lxagents-agents-base` MCP connector and is never copied into this tree.
+through the `lxagents-agents-base` Skill MCP connector and is never copied into this tree.
 See the bootstrap block in [`../../AGENTS.md`](../../AGENTS.md).
 
 ## The two surfaces stay in step
 
-The CLI (`lxagents-security`) and the MCP server (`lxagents-security-server`) are two
+The CLI (`lxagents-security`) and the Skill MCP server (`lxagents-security-server`) are two
 doors onto one implementation. A tool reachable from one is reachable from the other,
 with the same name and the same description.
 
-* The tool surface is built in exactly one place: `src/tools/from-content.js`, from the
+* The tool surface is built in exactly one place: `src/instructions/from-content.js`, from the
   files in `content/`.
 * `src/server.js` registers that array and exports `listTools()`; it does not declare
   tools of its own.
@@ -45,7 +45,7 @@ that names nothing useful.
 | Thing | Path |
 |---|---|
 | The served security set | `content/` |
-| The tool surface, derived from the set | `src/tools/from-content.js` |
+| The tool surface, derived from the set | `src/instructions/from-content.js` |
 | Tool registration and `listTools()` | `src/server.js` |
 | `ROOT`, `CONTENT_DIR`, and the version | `src/version.js` |
 | CLI commands | `src/cli.js` |

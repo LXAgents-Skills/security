@@ -1,12 +1,12 @@
 # lxagents-security
 
-The global security instruction set, served read-only over MCP.
+The global security instruction set, served read-only over Skill MCP.
 
-- **Organization:** `LXAgents-MCP`
+- **Organization:** `LXAgents-Skills`
 - **Repository:** `security`
 - **Server ID:** `lxagents-security`
-- **Package:** `@lxagents-mcp/security`
-- **Dual-purpose:** a CLI (`lxagents-security`) and an MCP server
+- **Package:** `@lxagents-skills/security`
+- **Dual-purpose:** a CLI (`lxagents-security`) and a Skill MCP server
   (`lxagents-security-server`).
 
 The set covers **Python**, **JavaScript/TypeScript**, and **Go** — the language and
@@ -138,7 +138,7 @@ not covered here.
 ## Working with agents
 
 Start at [`AGENTS.md`](AGENTS.md). Shared conventions — branching, commits, pull
-requests, the task workflow — are served by the `lxagents-agents-base` MCP connector and
+requests, the task workflow — are served by the `lxagents-agents-base` Skill MCP connector and
 are not stored in this repository.
 
 ## License

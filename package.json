@@ -1,7 +1,7 @@
 {
-  "name": "@lxagents-mcp/security",
+  "name": "@lxagents-skills/security",
   "version": "2.0.0",
-  "description": "Read-only MCP server delivering the global security instruction set for python, javascript/typescript, and go.",
+  "description": "Read-only Skill MCP server delivering the global security instruction set for python, javascript/typescript, and go.",
   "type": "module",
   "main": "src/index.js",
   "bin": {
@@ -31,11 +31,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/LXAgents-MCP/security.git"
+    "url": "git+https://github.com/LXAgents-Skills/security.git"
   },
-  "homepage": "https://github.com/LXAgents-MCP/security#readme",
+  "homepage": "https://github.com/LXAgents-Skills/security#readme",
   "bugs": {
-    "url": "https://github.com/LXAgents-MCP/security/issues"
+    "url": "https://github.com/LXAgents-Skills/security/issues"
   },
   "keywords": [
     "mcp",

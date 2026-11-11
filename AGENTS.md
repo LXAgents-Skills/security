@@ -1,11 +1,11 @@
 ---
 name: agents-entry-point
-description: Entry point for lxagents-security - a read-only MCP server and CLI that serves the global security instruction set.
+description: Entry point for lxagents-security - a read-only Skill MCP server and CLI that serves the global security instruction set.
 ---
 
 # AGENTS.md
 
-This repository is `lxagents-security`: an MCP server (`lxagents-security-server`) and a
+This repository is `lxagents-security`: a Skill MCP server (`lxagents-security-server`) and a
 CLI (`lxagents-security`) over one implementation, Node.js 20+, ESM, no build step. It
 serves the **global security set** - the language and framework guides for Python,
 JavaScript/TypeScript, and Go - read-only, from [`content/`](content/).
@@ -17,7 +17,7 @@ connector rather than keeping its own copy of it.
 
 The conventions this repository follows — branching, commits, pull requests, task
 workflow, the creators — live in the shared instruction set served by the
-**`lxagents-agents-base`** MCP server. This repository carries only what is its
+**`lxagents-agents-base`** Skill MCP server. This repository carries only what is its
 own. **Resolve the shared set before doing any work:**
 
 1. If the `lxagents-agents-base` connector is available in this session, that is
