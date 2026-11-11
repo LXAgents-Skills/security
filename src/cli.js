@@ -32,13 +32,18 @@ if (command === "-v" || command === "--version") {
   process.stdout.write(`${HELP}\n`);
   process.exitCode = command ? 0 : 2;
 } else if (command === "serve") {
-  if (rest.includes("--http")) process.env.MCP_TRANSPORT = "http";
-  if (rest.includes("--stdio")) process.env.MCP_TRANSPORT = "stdio";
+  // Flags override the environment for this run. They are not written back to
+  // process.env: a forked HTTP worker re-runs this file with the same arguments, so it
+  // reaches the same configuration on its own.
+  const overrides = {};
+  if (rest.includes("--http")) overrides.MCP_TRANSPORT = "http";
+  if (rest.includes("--stdio")) overrides.MCP_TRANSPORT = "stdio";
 
   const portFlag = rest.indexOf("--port");
-  if (portFlag !== -1 && rest[portFlag + 1]) process.env.PORT = rest[portFlag + 1];
+  if (portFlag !== -1 && rest[portFlag + 1]) overrides.PORT = rest[portFlag + 1];
 
-  await import("./index.js");
+  const [{ loadConfig }, { run }] = await Promise.all([import("./config.js"), import("./run.js")]);
+  await run(loadConfig({ ...process.env, ...overrides }));
 } else if (command === "tools") {
   const tools = listTools();
   const width = Math.max(0, ...tools.map((tool) => tool.name.length));

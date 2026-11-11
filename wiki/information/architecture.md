@@ -1,28 +1,47 @@
 # Architecture
 
-Six source files and one generated tool surface. There is no build step.
+Twelve source files, each with one job, and one generated instruction surface. There is no
+build step.
 
 ```
 src/
-  index.js     entry point: picks a transport, and owns the cluster
-  app.js       the express application, as a pure factory — builds, never listens
-  auth.js      the bearer token: the strength check, and the middleware that enforces it
-  server.js    builds the McpServer, registers every tool, exports listTools()
-  cli.js       the CLI: help, version, tools, serve
-  version.js   reads the version out of package.json, and holds ROOT and CONTENT_DIR
-  tools/
-    from-content.js   builds the whole tool surface from content/, once, at import
-content/       the published security set
+  index.js          entry point: reads the config and calls run(); the only file that starts anything
+  run.js            picks stdio or streamable HTTP, and primary or worker
+  config.js         every environment variable but the token, read once into a frozen object
+  stdio.js          the stdio transport
+  http/
+    primary.js      forks the workers, respawns and drains them; refuses to start without a token
+    worker.js       listens, logs the startup lines, drains on a signal
+    app.js          the express application, as a pure factory — builds, never listens
+    auth.js         the bearer token: the strength check, and the middleware that enforces it
+    rpc-error.js    the one JSON-RPC error envelope every refusal uses
+  server.js         builds the McpServer, registers every instruction, exports listTools()
+  cli.js            the CLI: help, version, tools, serve
+  version.js        reads the version out of package.json, and holds ROOT and CONTENT_DIR
+  instructions/
+    from-content.js builds the whole instruction surface from content/, once, at import
+content/            the published security set
 ```
 
-`app.js` and `index.js` are split on purpose. `app.js` returns an express app and
-nothing else — it does not listen and does not read `MCP_CLUSTER_WORKERS`. A file that
-both builds the app and binds a port cannot be reasoned about, or tested, without
-binding one.
+```
+cli.js ─▶ run.js ◀── index.js ─▶ config.js
+            │
+     ┌──────┴──────────┐
+     ▼                 ▼
+ stdio.js       http/primary.js ─fork─▶ http/worker.js ─▶ http/app.js ─▶ http/auth.js
+     │                                                      │      └──▶ http/rpc-error.js
+     └──────────────▶ server.js ◀───────────────────────────┘
+```
+
+**Nothing below `index.js` starts anything on import.** `app.js` returns an express app and
+nothing else: it does not listen and does not read the environment. `worker.js` owns the port
+and `primary.js` owns the fork. A file that both builds the app and binds a port cannot be
+reasoned about, or tested, without binding one. The transports are imported only once chosen,
+so a stdio server never loads express.
 
 ## Entry point and transports
 
-`src/index.js` reads `MCP_TRANSPORT` and serves either way:
+`src/index.js` reads the configuration through `src/config.js`, and `src/run.js` serves either way:
 
 * **stdio** (default) — one `McpServer` connected to a `StdioServerTransport` for the
   life of the process. Never forked: stdout is the JSON-RPC channel, and a worker's copy
@@ -43,7 +62,7 @@ its `0.0.0.0` default says on the startup line that the port is open on every in
 `MCP_ALLOWED_HOSTS` guards what reaches it. When it is set, every request — including
 `/healthz` — is matched against it first, and a `Host` outside the list is refused with
 a 403. When it is unset, no list is applied, and the startup line says so. The matching
-is the SDK's `hostHeaderValidation`, mounted natively by `src/app.js` — it is
+is the SDK's `hostHeaderValidation`, mounted natively by `src/http/app.js` — it is
 Express-shaped, refusing with `res.status(code).json(body)`, so an express app is what
 it expects and the earlier hand-written response shim is gone. The port-agnostic matching
 and the JSON-RPC refusal body therefore have one implementation rather than two.
@@ -152,9 +171,9 @@ no caller, where a future reader could not tell whether it was load-bearing.
 **The HTTP transport requires a bearer token, and stdio does not.** No tool in this repository
 reads a credential, and none takes one as an argument; the token belongs to the transport.
 
-`src/auth.js` reads `MCP_AUTH_TOKEN` and `src/app.js` mounts its middleware after the `Host`
+`src/http/auth.js` reads `MCP_AUTH_TOKEN` and `src/http/app.js` mounts its middleware after the `Host`
 allow-list and ahead of the body parser and every route, with `GET /healthz` the one
-exemption. `createApp` throws without a usable token, and the primary in `src/index.js`
+exemption. `createApp` throws without a usable token, and the primary in `src/http/primary.js`
 checks first, so a missing one is a single line and exit code `1` rather than the same line
 from each worker and a respawn loop. The stdio path never reads the variable. The comparison is
 constant-time over SHA-256 digests, the token is never logged or echoed, and there is no

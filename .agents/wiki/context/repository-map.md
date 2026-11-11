@@ -30,17 +30,25 @@ content/                      the published security set - the product
   LICENSE.txt                 Apache-2.0, from the upstream package
   references/                 ten guides, <language>-<framework>-<stack>-security.md
 src/
-  index.js                    entry point; picks stdio or streamable HTTP, owns the cluster
-  app.js                      the express application as a pure factory - builds, never listens
-  auth.js                     the bearer token: tokenProblem, configuredToken, requireBearerToken
+  index.js                    entry point; reads the config and calls run()
+  run.js                      picks stdio or streamable HTTP, primary or worker
+  config.js                   every environment variable but the token, read once into a frozen object
+  stdio.js                    the stdio transport
+  http/
+    primary.js                forks the workers, respawns them, drains them; checks the token first
+    worker.js                 listens, logs the startup lines, drains on a signal
+    app.js                    the express application as a pure factory - builds, never listens
+    auth.js                   the bearer token: tokenProblem, configuredToken, requireBearerToken
+    rpc-error.js              the one JSON-RPC error envelope every refusal uses
   server.js                   builds the McpServer and registers the generated surface; exports listTools()
   cli.js                      the CLI: help, version, tools, serve
   version.js                  ROOT, CONTENT_DIR, and the version out of package.json
-  tools/
-    from-content.js           builds the whole tool surface from content/, once, at import
+  instructions/
+    from-content.js           builds the whole instruction surface from content/, once, at import
 test/
   server.test.js              bijection, derivation, no-argument surface, served totals, parity
   http.test.js                the streamable HTTP transport and the workers, over a real socket
+  config.test.js              the configuration defaults and parsing
 wiki/                         human documentation
 .agents/                      this set - rules, agent wiki, memory, indexes
 ```
@@ -60,12 +68,12 @@ wiki/                         human documentation
 
 | Variable | Read by | Effect |
 |---|---|---|
-| `MCP_TRANSPORT` | `src/index.js` | `stdio` (default) or `http` (Streamable HTTP on `/mcp`). |
-| `PORT` | `src/index.js` | HTTP port, default `3000`. |
-| `HOST` | `src/index.js` | Interface the HTTP transport binds, default `0.0.0.0` — every IPv4 interface. |
-| `MCP_ALLOWED_HOSTS` | `src/app.js` | Comma-separated `Host` allow-list for the HTTP transport. **Unset means none is applied**; the server says so on startup. |
-| `MCP_CLUSTER_WORKERS` | `src/index.js` | HTTP worker count, default one per CPU. **`1` forks nothing.** stdio never forks. |
-| `MCP_AUTH_TOKEN` | `src/auth.js`, checked in `src/index.js` | **A secret.** The bearer token every HTTP request except `GET /healthz` must carry; at least 32 characters; HTTP will not start without it; stdio never reads it. |
+| `MCP_TRANSPORT` | `src/config.js` | `stdio` (default) or `http` (Streamable HTTP on `/mcp`). |
+| `PORT` | `src/config.js` | HTTP port, default `3000`. |
+| `HOST` | `src/config.js` | Interface the HTTP transport binds, default `0.0.0.0` — every IPv4 interface. |
+| `MCP_ALLOWED_HOSTS` | `src/config.js` | Comma-separated `Host` allow-list for the HTTP transport. **Unset means none is applied**; the server says so on startup. |
+| `MCP_CLUSTER_WORKERS` | `src/config.js` | HTTP worker count, default one per CPU. **`1` forks nothing.** stdio never forks. |
+| `MCP_AUTH_TOKEN` | `src/http/auth.js`, checked in `src/http/primary.js` | **A secret.** The bearer token every HTTP request except `GET /healthz` must carry; at least 32 characters; HTTP will not start without it; stdio never reads it. |
 
 There is no `API_KEY`: nothing here reaches an external service, and no tool reads a credential.
 `MCP_ALLOWED_HOSTS` is a filter, not a credential — it decides which `Host` values are answered,
@@ -100,11 +108,11 @@ Eleven tools today. None of them takes an argument.
   hand-rolled single-line parser, not a YAML dependency.
 * **Nothing is unserved except by not being `.md`.** `content/LICENSE.txt` has no tool
   because it is not markdown. Nothing else in the set opts out.
-* **A fresh `McpServer` per HTTP request.** `src/app.js` builds and closes one per
+* **A fresh `McpServer` per HTTP request.** `src/http/app.js` builds and closes one per
   request because `McpServer` holds per-connection state. Do not hoist it to module
   scope, and note that with workers on, that request may be answered by any of N
   separate processes.
-* **`src/app.js` must not call `listen()`.** It is a factory; `src/index.js` owns the
+* **`src/http/app.js` must not call `listen()`.** It is a factory; `src/http/worker.js` owns the
   port and the worker count. A file that both builds and binds cannot be tested without
   opening one.
 * **An unset `MCP_ALLOWED_HOSTS` is the guard being off.** Not "allow nothing". The
