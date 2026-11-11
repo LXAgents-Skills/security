@@ -40,3 +40,11 @@ never drift from its source in history. The Docker image builds in a first stage
 
 Landed: this record and its row in `memory-index.md`. Also removed a leftover merge-conflict
 marker from `memory-index.md` that had reached master.
+
+### Task 2 - build/dependencies
+
+Landed. `@modelcontextprotocol/sdk` 1.30.0 to 1.32.2, `express` 5.2.1 to 5.3.0, `zod` 4.5.4 to
+4.6.7. New devDependencies: `typescript` 7.0.2, `@types/node` 26.6.6, `tsx` 4.23.15,
+`@types/express` 5.0.6. `npm audit` reported 9 vulnerabilities on master (1 critical, 4 high,
+4 moderate), all transitive (`fast-uri`, `hono`, `ip-address` among them); the updates and
+`npm audit fix` leave 0. `npm outdated` is empty. Still JavaScript: 69 tests pass unchanged.
