@@ -37,3 +37,11 @@ fails if `--help` leaves one out; it failed before the fix. The dead
 
 Landed. `src/http/rpc-error.js` is the one JSON-RPC error envelope; `app.js` and the 401 in
 `auth.js` both use it. The response bodies are unchanged and the token tests pin them.
+
+### Task 4 — refactor/config
+
+Landed. `src/config.js` reads `MCP_TRANSPORT`, `PORT`, `HOST`, `MCP_CLUSTER_WORKERS` and
+`MCP_ALLOWED_HOSTS` into one frozen object; `index.js` and `createApp` take it instead of reading
+the environment themselves. `MCP_AUTH_TOKEN` stays in `auth.js`, read at call time. The
+exported `allowedHosts()` is gone; `createApp` takes `allowedHosts` as an option.
+`test/config.test.js` pins the defaults and the parsing.
