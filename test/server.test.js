@@ -309,3 +309,26 @@ test("the tool surface reads no credential and needs no key to answer", async ()
     assert.ok(text.length > 1000, "the set is served without a key");
   });
 });
+
+test("the CLI help names every environment variable the server reads", async () => {
+  const { execFile } = await import("node:child_process");
+  const { promisify } = await import("node:util");
+  const root = join(CONTENT_DIR, "..");
+  const { stdout: help } = await promisify(execFile)(process.execPath, [join(root, "src/cli.js"), "--help"]);
+
+  const sources = [];
+  async function collect(dir) {
+    for (const entry of await readdir(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) await collect(full);
+      else if (entry.name.endsWith(".js")) sources.push(await readFile(full, "utf8"));
+    }
+  }
+  await collect(join(root, "src"));
+
+  const read = new Set(sources.join("\n").match(/(?<=\benv\.)[A-Z][A-Z0-9_]+/g));
+  assert.ok(read.has("MCP_AUTH_TOKEN"), "expected the scan to find MCP_AUTH_TOKEN");
+  for (const name of read) {
+    assert.match(help, new RegExp(`\\b${name}\\b`), `--help does not mention ${name}`);
+  }
+});

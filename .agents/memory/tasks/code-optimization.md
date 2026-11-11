@@ -26,3 +26,9 @@ Not in scope: splitting `test/http.test.js`, caching `McpServer`, renaming the p
 ### Task 1 — plan/code-optimization
 
 Landed: this record and its row in `memory-index.md`.
+
+### Task 2 — fix/cli-help-token
+
+Landed. `--help` lists `MCP_AUTH_TOKEN`. A new test scans `src/` for every `env.NAME` read and
+fails if `--help` leaves one out; it failed before the fix. The dead
+`activation-security.md` reference is gone from `src/app.js` and the express decision.

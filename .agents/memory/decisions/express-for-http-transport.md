@@ -54,7 +54,7 @@ while reviewing this migration.
 
 An allow-list that silently refuses every request is a worse failure than an absent one.
 `MCP_DNS_REBINDING_PROTECTION` used to default to `false` and made these allow-lists
-inert; see [`../tasks/activation-security.md`](../tasks/activation-security.md). When
+inert. When
 the list is absent, this server says so on startup rather than papering over it with a
 default — a control that is off silently reads as present.
 
