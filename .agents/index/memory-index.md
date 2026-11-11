@@ -34,13 +34,11 @@ current request.
 | [`../memory/tasks/per-file-tools.md`](../memory/tasks/per-file-tools.md) | Replacing the single path-taking tool with eleven tools derived from `content/` — one per file, no argument anywhere. Released as `1.0.0`. |
 | [`../memory/tasks/express-cluster-migration.md`](../memory/tasks/express-cluster-migration.md) | Replacing `node:http` with an express application at `POST /mcp`, and answering requests from cluster workers on one port. The `Dockerfile` is untouched. |
 | [`../memory/tasks/http-token-auth.md`](../memory/tasks/http-token-auth.md) | Requiring a bearer token on the HTTP transport while stdio stays open, and the breaking release that follows. |
-<<<<<<< HEAD
 | [`../memory/tasks/skills-migration.md`](../memory/tasks/skills-migration.md) | Merging the stale token-auth branches into master, then moving to `LXAgents-Skills` and from tools to instructions in the internal vocabulary. No version change. |
 | [`../memory/tasks/code-optimization.md`](../memory/tasks/code-optimization.md) | The CLI help gap, one JSON-RPC error envelope, one config reader, and `src/index.js` split by responsibility. No version change. |
 | [`../memory/tasks/automation-hub.md`](../memory/tasks/automation-hub.md) | `content/automation.md` as the routing hub over every served file, and tool IDs prefixed with `lxagents_skills_security_`. |
 | [`../memory/tasks/local-http-token.md`](../memory/tasks/local-http-token.md) | `MCP_AUTH_TOKEN` required only when HTTP is reachable from a network; a loopback bind runs without one, behind the localhost `Host` allow-list. |
-=======
->>>>>>> origin/chore/http-token-auth-plan
+| [`../memory/tasks/typescript-migration.md`](../memory/tasks/typescript-migration.md) | `src/` and `test/` moved to strict TypeScript, compiled to `dist/` by a `prepare` script on install; latest dependencies and a clean `npm audit`. Tool IDs and SDK calls unchanged. |
 
 ## Maintenance
 
