@@ -15,11 +15,11 @@ HTTP transports and the tool surface behave exactly as they did.
 
 | # | Task | Branch | PR |
 |---|---|---|---|
-| 1 | The record | `plan/typescript-migration` | |
-| 2 | Latest dependencies, the TypeScript devDependencies, `npm audit fix` | `build/dependencies` | |
-| 3 | `tsconfig.json` (ES2022, NodeNext, strict, `src` to `dist`); every `.js` in `src/` and `test/` renamed to `.ts` and typed; `main`, `bin`, `start` point at `dist/`; `build`, `prepare`, `pretest` scripts; tests run through `tsx`; two-stage `Dockerfile` | `refactor/typescript` | |
-| 4 | README, `wiki/`, `.agents/` docs and rules describe the build step and `dist/index.js` | `docs/typescript` | |
-| 5 | Release `2.0.4`, a patch by the owner's standing choice | `release/2.0.4` | |
+| 1 | The record | `plan/typescript-migration` | #17 |
+| 2 | Latest dependencies, the TypeScript devDependencies, `npm audit fix` | `build/dependencies` | #18 |
+| 3 | `tsconfig.json` (ES2022, NodeNext, strict, `src` to `dist`); every `.js` in `src/` and `test/` renamed to `.ts` and typed; `main`, `bin`, `start` point at `dist/`; `build`, `prepare`, `pretest` scripts; tests run through `tsx`; two-stage `Dockerfile` | `refactor/typescript` | #19 |
+| 4 | README, `wiki/`, `.agents/` docs and rules describe the build step and `dist/index.js` | `docs/typescript` | #20 |
+| 5 | Release `2.0.4`, a patch by the owner's standing choice | `release/2.0.4` | #21 |
 
 **What stays:** every tool ID, every description, the SDK methods (`server.tool`, the
 Streamable HTTP and stdio transports), the HTTP routes and refusals, and the environment
@@ -94,5 +94,7 @@ was true then.
 Landed. The version is `2.0.4`, a patch bump, which is the owner's standing choice. The
 changelog in `wiki/logs/2/0/4/` says the one thing clients must do: point a local
 registration at `dist/index.js`. It also has a row in `logs-index.md`, and the documented
-image tag and startup lines are now 2.0.4. Final check on this branch: a clean `npm run build`
+image tag and startup lines are now 2.0.4. The PR column is filled in: #17 to #21, opened with the owner's approval and stacked in order. Final check on this branch: a clean `npm run build`
 and `npm run typecheck`, 69 of 69 tests pass, and `npm audit` reports 0 vulnerabilities.
+
+**Status: done.** All five tasks have landed on their branches. Merging waits on the owner's approval, in order from #17 to #21.
