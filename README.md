@@ -12,7 +12,9 @@ The global security instruction set, served read-only over Skill MCP.
 The set covers **Python**, **JavaScript/TypeScript**, and **Go** — the language and
 framework guides for writing secure code and reviewing code that is already written.
 One implementation behind two surfaces, so a result produced through the CLI is identical
-to the same result produced through an MCP client. Node.js 20+, ESM, no build step.
+to the same result produced through an MCP client. Node.js 20+, ESM, TypeScript compiled to
+`dist/` by `npm install` (the `prepare` script), so a `git clone` and `npm install` is the
+whole install.
 
 ## The tools
 
@@ -118,7 +120,7 @@ Every `.md` file here is a tool. `LICENSE.txt` is not, and is never served.
 
 | Transport | How |
 |---|---|
-| Local stdio | `command: node`, `args: ["src/index.js"]`, `cwd:` this checkout |
+| Local stdio | `command: node`, `args: ["dist/index.js"]`, `cwd:` this checkout |
 | Local HTTP | `npm run start:http`, then `http://localhost:3000/mcp`. No token: it binds `127.0.0.1` |
 | Remote | `https://<host>/mcp` with an `Authorization: Bearer <token>` header — a `.mcp.json` `headers` entry, `claude mcp add --transport http … --header`, the Agent SDK or the Inspector can send it |
 

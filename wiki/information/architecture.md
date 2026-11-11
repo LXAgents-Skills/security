@@ -41,7 +41,7 @@ so a stdio server never loads express.
 
 ## Entry point and transports
 
-`src/index.js` reads the configuration through `src/config.js`, and `src/run.js` serves either way:
+`src/index.ts` reads the configuration through `src/config.ts`, and `src/run.ts` serves either way:
 
 * **stdio** (default) — one `McpServer` connected to a `StdioServerTransport` for the
   life of the process. Never forked: stdout is the JSON-RPC channel, and a worker's copy
@@ -62,7 +62,7 @@ its `0.0.0.0` default says on the startup line that the port is open on every in
 `MCP_ALLOWED_HOSTS` guards what reaches it. When it is set, every request — including
 `/healthz` — is matched against it first, and a `Host` outside the list is refused with
 a 403. When it is unset, no list is applied, and the startup line says so. The matching
-is the SDK's `hostHeaderValidation`, mounted natively by `src/http/app.js` — it is
+is the SDK's `hostHeaderValidation`, mounted natively by `src/http/app.ts` — it is
 Express-shaped, refusing with `res.status(code).json(body)`, so an express app is what
 it expects and the earlier hand-written response shim is gone. The port-agnostic matching
 and the JSON-RPC refusal body therefore have one implementation rather than two.
@@ -115,7 +115,7 @@ points nowhere useful.
 
 ## The tool layer
 
-There is no hand-written tool in this repository. `src/instructions/from-content.js` walks
+There is no hand-written tool in this repository. `src/instructions/from-content.ts` walks
 `CONTENT_DIR` once, at import, and builds one tool per `.md` file it finds:
 
 ```js
@@ -133,7 +133,7 @@ for (const path of markdownFiles()) {
 ```
 
 `CONTENT_INSTRUCTIONS` is frozen at module scope and `INSTRUCTION_FILES` maps each tool name back to the
-file it serves. `src/server.js` registers the array as-is:
+file it serves. `src/server.ts` registers the array as-is:
 
 ```js
 const INSTRUCTION_MODULES = Object.freeze(CONTENT_INSTRUCTIONS);
@@ -150,14 +150,14 @@ The file is served whole, frontmatter included, byte-identical to disk. The fron
 is part of the published text, not metadata to strip — and `description:` is load-bearing
 twice over, as both the tool description and the route a caller makes on it.
 
-No generated tool declares a schema, so `src/server.js` registers with the
+No generated tool declares a schema, so `src/server.ts` registers with the
 three-argument `server.tool(name, description, handler)` form. There is no
 `config.schema` branch to take the four-argument form, and no code path by which an
 argument could be introduced without hand-writing a tool module beside the generator.
 
 ## Reading from the set
 
-Everything is resolved at import, from the constant `CONTENT_DIR` in `src/version.js`.
+Everything is resolved at import, from the constant `CONTENT_DIR` in `src/version.ts`.
 A call is a map lookup and a string that was read once at startup: there is no filesystem
 I/O on the read path, and there is no path a caller could aim at anything with.
 
@@ -172,9 +172,9 @@ no caller, where a future reader could not tell whether it was load-bearing.
 loopback server without a token gets the SDK's localhost `Host` allow-list instead. No tool in this repository
 reads a credential, and none takes one as an argument; the token belongs to the transport.
 
-`src/http/auth.js` reads `MCP_AUTH_TOKEN` and `src/http/app.js` mounts its middleware after the `Host`
+`src/http/auth.ts` reads `MCP_AUTH_TOKEN` and `src/http/app.ts` mounts its middleware after the `Host`
 allow-list and ahead of the body parser and every route, with `GET /healthz` the one
-exemption. `createApp` throws without a usable token, and the primary in `src/http/primary.js`
+exemption. `createApp` throws without a usable token, and the primary in `src/http/primary.ts`
 checks first, so a missing one is a single line and exit code `1` rather than the same line
 from each worker and a respawn loop. The stdio path never reads the variable. The comparison is
 constant-time over SHA-256 digests, the token is never logged or echoed, and there is no
@@ -197,11 +197,11 @@ has to fail closed before anything is served.
 
 ## The parity guarantee
 
-`src/server.js` holds the only tool list. `listTools()` derives name/description pairs
-from the same `INSTRUCTION_MODULES` array used for registration, and `src/cli.js` prints that
+`src/server.ts` holds the only tool list. `listTools()` derives name/description pairs
+from the same `INSTRUCTION_MODULES` array used for registration, and `src/cli.ts` prints that
 rather than keeping a list of its own.
 
-`test/server.test.js` asserts that what the CLI would print matches what an MCP client
+`test/server.test.ts` asserts that what the CLI would print matches what an MCP client
 receives from `tools/list`, so the two surfaces cannot drift apart without failing the
 suite. The same file pins the bijection between the files in `content/` and the tools on
 the surface, in both directions.

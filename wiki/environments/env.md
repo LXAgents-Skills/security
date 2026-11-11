@@ -7,12 +7,12 @@ runs without it.
 
 | Variable | Default | Read by | Effect |
 |---|---|---|---|
-| `MCP_TRANSPORT` | `stdio` | `src/config.js` | `stdio` or `http` (`streamable-http` is accepted too). `http` is **Streamable HTTP on `/mcp`** — it is the only HTTP transport this server has. |
-| `PORT` | `3000` | `src/config.js` | The port the HTTP transport listens on. Ignored on stdio. |
-| `HOST` | `0.0.0.0` | `src/config.js` | The interface the HTTP transport binds. Ignored on stdio. A loopback value (`127.0.0.1`, `localhost`, `::1`) makes the install local: no token required. `--host` overrides it. |
-| `MCP_ALLOWED_HOSTS` | *unset* | `src/config.js` | Comma-separated `Host` allow-list. **Unset means no allow-list is applied.** Read on the HTTP transport only. |
-| `MCP_AUTH_TOKEN` | **none - required for HTTP off loopback** | `src/http/auth.js` | The bearer token every HTTP request except `GET /healthz` must carry. At least 32 characters. **HTTP bound to anything but loopback will not start without it.** Optional on loopback, where it is still enforced if set. stdio never reads it. |
-| `MCP_CLUSTER_WORKERS` | *the CPU count* | `src/config.js` | How many HTTP workers to fork. **`1` means no fork at all** — one process, one listener. Read on the HTTP transport only; stdio never forks. |
+| `MCP_TRANSPORT` | `stdio` | `src/config.ts` | `stdio` or `http` (`streamable-http` is accepted too). `http` is **Streamable HTTP on `/mcp`** — it is the only HTTP transport this server has. |
+| `PORT` | `3000` | `src/config.ts` | The port the HTTP transport listens on. Ignored on stdio. |
+| `HOST` | `0.0.0.0` | `src/config.ts` | The interface the HTTP transport binds. Ignored on stdio. A loopback value (`127.0.0.1`, `localhost`, `::1`) makes the install local: no token required. `--host` overrides it. |
+| `MCP_ALLOWED_HOSTS` | *unset* | `src/config.ts` | Comma-separated `Host` allow-list. **Unset means no allow-list is applied.** Read on the HTTP transport only. |
+| `MCP_AUTH_TOKEN` | **none - required for HTTP off loopback** | `src/http/auth.ts` | The bearer token every HTTP request except `GET /healthz` must carry. At least 32 characters. **HTTP bound to anything but loopback will not start without it.** Optional on loopback, where it is still enforced if set. stdio never reads it. |
+| `MCP_CLUSTER_WORKERS` | *the CPU count* | `src/config.ts` | How many HTTP workers to fork. **`1` means no fork at all** — one process, one listener. Read on the HTTP transport only; stdio never forks. |
 
 `0.0.0.0` is every IPv4 interface. It is **not** the dual-stack `::` that Node binds when
 no interface is named, so a client reaching the server over IPv6 needs `HOST=::`.
@@ -116,8 +116,8 @@ and `--port` are equivalent to exporting them.
 `start:http` goes through `serve --http` rather than setting the variable in the script.
 A `VAR=value command` prefix is a shell feature, not a Node one: it works under `sh` and
 fails in `cmd.exe`, so the same script could not run on a stock Windows checkout. Setting
-the variable in `src/cli.js` keeps one mechanism for both platforms and adds no
-dependency. `MCP_TRANSPORT=http node src/index.js` still works wherever the shell
+the variable in `src/cli.ts` keeps one mechanism for both platforms and adds no
+dependency. `MCP_TRANSPORT=http node dist/index.js` still works wherever the shell
 supports it; it is the npm script, not the server, that avoids the prefix.
 
 ## `MCP_CLUSTER_WORKERS`

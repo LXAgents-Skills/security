@@ -13,8 +13,10 @@ serves the **global security set** read-only. It is no longer a template: `PROMP
 
 ## Stack
 
-Node.js 20+, ESM, no build step. One runtime dependency:
-`@modelcontextprotocol/sdk`. Tests are `node --test`, no framework.
+Node.js 20+, ESM, strict TypeScript compiled by `tsc` to `dist/` (built on `npm install` by
+the `prepare` script, never committed). Runtime dependencies: `@modelcontextprotocol/sdk`,
+`express`, `zod`. Tests are `node --test` through `tsx`, no framework, against the compiled
+server. See [`../tasks/typescript-migration.md`](../tasks/typescript-migration.md).
 
 ## What exists
 
@@ -23,10 +25,10 @@ Node.js 20+, ESM, no build step. One runtime dependency:
   `<language>-<framework>-<stack>-security.md` across Python, JavaScript/TypeScript, and
   Go. Copied verbatim from the workspace `.agents/security/security-best-practices/`
   package, frontmatter intact.
-* **A derived tool surface.** `src/instructions/from-content.js` walks `content/` once at
+* **A derived tool surface.** `src/instructions/from-content.ts` walks `content/` once at
   import and builds one tool per `.md` file, named after its own filename — twelve
   tools, `automation`, `skill` and the ten reference guides, each ID prefixed
-  `lxagents_skills_security_`. `src/server.js` registers the frozen
+  `lxagents_skills_security_`. `src/server.ts` registers the frozen
   array as `INSTRUCTION_MODULES`, which is the whole surface. There is no hand-written tool in
   this repository.
 * **No argument anywhere.** Every tool returns one file verbatim with its frontmatter
@@ -47,9 +49,9 @@ Node.js 20+, ESM, no build step. One runtime dependency:
   count — `os.availableParallelism()` by default — and each worker binds the same `PORT`.
   `1` forks nothing, which keeps the change bisectable. stdio never forks, because stdout
   is the JSON-RPC channel there.
-* **Surface parity.** `src/cli.js` prints `listTools()` from `src/server.js`;
-  `test/server.test.js` pins the CLI list against the MCP client's `tools/list` in
-  memory, and `test/http.test.js` pins it again over a socket.
+* **Surface parity.** `src/cli.ts` prints `listTools()` from `src/server.ts`;
+  `test/server.test.ts` pins the CLI list against the MCP client's `tools/list` in
+  memory, and `test/http.test.ts` pins it again over a socket.
 * **Instruction system.** `AGENTS.md` plus `.agents/`, resolving the shared set through
   the `lxagents-agents-base` connector. Local rules: `repository`, `tool-authoring`,
   `secrets`. No overrides.
@@ -93,7 +95,7 @@ material in `content/`.
 Add CI that runs `npm test` on push. The suite is the only thing holding the two surfaces
 and the file-to-tool bijection together, and nothing runs it automatically.
 
-Note that `test/http.test.js` is timing-sensitive under a full parallel run on a slow
+Note that `test/http.test.ts` is timing-sensitive under a full parallel run on a slow
 or network filesystem: it spawns a child server per test and waits on a startup line.
 `the startup line announces that no allow-list is applied` failed in 2 of 8 full-suite runs
 on WSL `/mnt/c`, and passed every time the file was run alone. It is a harness race, not a

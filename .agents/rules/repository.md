@@ -21,13 +21,13 @@ The CLI (`lxagents-security`) and the Skill MCP server (`lxagents-security-serve
 doors onto one implementation. A tool reachable from one is reachable from the other,
 with the same name and the same description.
 
-* The tool surface is built in exactly one place: `src/instructions/from-content.js`, from the
+* The tool surface is built in exactly one place: `src/instructions/from-content.ts`, from the
   files in `content/`.
-* `src/server.js` registers that array and exports `listTools()`; it does not declare
+* `src/server.ts` registers that array and exports `listTools()`; it does not declare
   tools of its own.
-* `src/cli.js` never maintains its own list - it reads the declaration from
-  `src/server.js`.
-* `test/server.test.js` pins the agreement. A change that makes the two surfaces
+* `src/cli.ts` never maintains its own list - it reads the declaration from
+  `src/server.ts`.
+* `test/server.test.ts` pins the agreement. A change that makes the two surfaces
   disagree fails the suite, and that failure is the point.
 
 ## Nothing writes to stdout except the CLI
@@ -45,18 +45,21 @@ that names nothing useful.
 | Thing | Path |
 |---|---|
 | The served security set | `content/` |
-| The tool surface, derived from the set | `src/instructions/from-content.js` |
-| Tool registration and `listTools()` | `src/server.js` |
-| `ROOT`, `CONTENT_DIR`, and the version | `src/version.js` |
-| CLI commands | `src/cli.js` |
-| Transport and entry point | `src/index.js` → `src/run.js` → `src/stdio.js` or `src/http/` |
-| Tests | `test/{subject}.test.js` |
+| The tool surface, derived from the set | `src/instructions/from-content.ts` |
+| Tool registration and `listTools()` | `src/server.ts` |
+| `ROOT`, `CONTENT_DIR`, and the version | `src/version.ts` |
+| CLI commands | `src/cli.ts` |
+| Compiled output, never committed | `dist/`, from `tsconfig.json` |
+| Transport and entry point | `src/index.ts` → `src/run.ts` → `src/stdio.ts` or `src/http/` |
+| Tests | `test/{subject}.test.ts` |
 
 ## Commands
 
 ```bash
-npm install       # no build step, Node 20+
-npm test          # node --test
+npm install       # Node 20+; compiles src/ to dist/ through prepare
+npm run build     # tsc, after a change to src/
+npm run typecheck # src/ and test/, no output
+npm test          # builds, then node --import tsx --test test/*.test.ts
 npm run cli -- tools
 npm start         # stdio
 npm run start:http
@@ -65,7 +68,12 @@ npm run inspect   # MCP Inspector against the stdio server
 
 ## What must not be introduced
 
-* A build step. This package ships source and is run directly by Node.
+* Committed build output. `dist/` is compiled from `src/` by `npm install` and `npm test`
+  and is ignored by git; a checked-in copy would drift from its source.
+* A second build tool. `tsc` is the build; there is no bundler, and the compiled files
+  keep the one-module-per-file shape of `src/`.
+* An `any`. `strict` is on, and a type that cannot be named yet is `unknown`, narrowed
+  where it is read.
 * A second source of truth for the tool list, and a hand-written tool module beside the
   generator - see [`tool-authoring.md`](tool-authoring.md).
 * Shared instruction content. If it can be read from `agents://`, it must not exist
