@@ -2,24 +2,24 @@ import express from "express";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { hostHeaderValidation } from "@modelcontextprotocol/sdk/server/middleware/hostHeaderValidation.js";
 import { configuredToken, requireBearerToken, tokenProblem } from "./auth.js";
-import { loadConfig } from "./config.js";
-import { rpcError } from "./http/rpc-error.js";
-import { SERVER_ID, createServer } from "./server.js";
-import { version } from "./version.js";
+import { loadConfig } from "../config.js";
+import { rpcError } from "./rpc-error.js";
+import { SERVER_ID, createServer } from "../server.js";
+import { version } from "../version.js";
 
 /**
  * The HTTP transport, as an application.
  *
  * This module builds an express app and returns it. **It does not listen** —
- * `src/index.js` owns the port. A file that both builds the app and binds a port
+ * `src/http/worker.js` owns the port. A file that both builds the app and binds a port
  * cannot be reasoned about, or tested, without binding one.
  *
  * The surface is deliberately narrow: `POST /mcp` and `GET /healthz`, a JSON-RPC 404
  * for everything else, and a 405 for any other method on `/mcp`. **Everything except
- * `GET /healthz` needs the bearer token** - see `src/auth.js` for why, and `createApp`
+ * `GET /healthz` needs the bearer token** - see `src/http/auth.js` for why, and `createApp`
  * for where. Nothing here is a
  * second source of truth about the tool list — `createServer()` is the same factory
- * `src/index.js` uses on stdio, and it returns a fresh `McpServer` per call, so each
+ * `src/stdio.js` uses, and it returns a fresh `McpServer` per call, so each
  * request gets its own. Sharing one across requests would be a real bug: `McpServer`
  * holds per-connection state.
  */
@@ -38,7 +38,7 @@ export const BODY_LIMIT_BYTES = 4 * 1024 * 1024;
  * `token` is the bearer token every request but `/healthz` must carry. It defaults to
  * `MCP_AUTH_TOKEN`, read now. **There is no way to build this app without one**: a
  * missing or too-short token throws, so an unauthenticated HTTP server cannot come from
- * forgetting an option. `src/index.js` checks first, in the primary, to report it once
+ * forgetting an option. `src/http/primary.js` checks first, to report it once
  * instead of once per worker.
  *
  * `allowedHosts` is the `Host` header allow-list, from `MCP_ALLOWED_HOSTS` by default; an

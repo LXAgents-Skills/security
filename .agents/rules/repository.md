@@ -49,7 +49,7 @@ that names nothing useful.
 | Tool registration and `listTools()` | `src/server.js` |
 | `ROOT`, `CONTENT_DIR`, and the version | `src/version.js` |
 | CLI commands | `src/cli.js` |
-| Transport and entry point | `src/index.js` |
+| Transport and entry point | `src/index.js` → `src/run.js` → `src/stdio.js` or `src/http/` |
 | Tests | `test/{subject}.test.js` |
 
 ## Commands

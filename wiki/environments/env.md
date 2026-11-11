@@ -6,12 +6,12 @@ HTTP server does not start.
 
 | Variable | Default | Read by | Effect |
 |---|---|---|---|
-| `MCP_TRANSPORT` | `stdio` | `src/index.js` | `stdio` or `http` (`streamable-http` is accepted too). `http` is **Streamable HTTP on `/mcp`** — it is the only HTTP transport this server has. |
-| `PORT` | `3000` | `src/index.js` | The port the HTTP transport listens on. Ignored on stdio. |
-| `HOST` | `0.0.0.0` | `src/index.js` | The interface the HTTP transport binds. Ignored on stdio. |
-| `MCP_ALLOWED_HOSTS` | *unset* | `src/app.js` | Comma-separated `Host` allow-list. **Unset means no allow-list is applied.** Read on the HTTP transport only. |
-| `MCP_AUTH_TOKEN` | **none - required for HTTP** | `src/auth.js` | The bearer token every HTTP request except `GET /healthz` must carry. At least 32 characters. **HTTP will not start without it.** stdio never reads it. |
-| `MCP_CLUSTER_WORKERS` | *the CPU count* | `src/index.js` | How many HTTP workers to fork. **`1` means no fork at all** — one process, one listener. Read on the HTTP transport only; stdio never forks. |
+| `MCP_TRANSPORT` | `stdio` | `src/config.js` | `stdio` or `http` (`streamable-http` is accepted too). `http` is **Streamable HTTP on `/mcp`** — it is the only HTTP transport this server has. |
+| `PORT` | `3000` | `src/config.js` | The port the HTTP transport listens on. Ignored on stdio. |
+| `HOST` | `0.0.0.0` | `src/config.js` | The interface the HTTP transport binds. Ignored on stdio. |
+| `MCP_ALLOWED_HOSTS` | *unset* | `src/config.js` | Comma-separated `Host` allow-list. **Unset means no allow-list is applied.** Read on the HTTP transport only. |
+| `MCP_AUTH_TOKEN` | **none - required for HTTP** | `src/http/auth.js` | The bearer token every HTTP request except `GET /healthz` must carry. At least 32 characters. **HTTP will not start without it.** stdio never reads it. |
+| `MCP_CLUSTER_WORKERS` | *the CPU count* | `src/config.js` | How many HTTP workers to fork. **`1` means no fork at all** — one process, one listener. Read on the HTTP transport only; stdio never forks. |
 
 `0.0.0.0` is every IPv4 interface. It is **not** the dual-stack `::` that Node binds when
 no interface is named, so a client reaching the server over IPv6 needs `HOST=::`.

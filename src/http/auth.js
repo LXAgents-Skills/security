@@ -1,5 +1,5 @@
 import { createHash, timingSafeEqual } from "node:crypto";
-import { rpcError } from "./http/rpc-error.js";
+import { rpcError } from "./rpc-error.js";
 
 /**
  * Bearer-token authentication for the HTTP transport.
@@ -10,8 +10,8 @@ import { rpcError } from "./http/rpc-error.js";
  * to it must prove the caller holds the token — and the server refuses to run HTTP without one,
  * rather than running open and saying so in a log nobody reads.
  *
- * Nothing in this file is reached on the stdio path, and `src/index.js` never reads
- * `MCP_AUTH_TOKEN` there.
+ * Nothing in this file is reached on the stdio path, and `src/stdio.js` never reads
+ * `MCP_AUTH_TOKEN`.
  */
 
 /**

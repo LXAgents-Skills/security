@@ -3,7 +3,7 @@ import { availableParallelism } from "node:os";
 /*
  * Every environment variable the server reads, read in one place.
  *
- * The one exception is `MCP_AUTH_TOKEN`, which `src/auth.js` reads at call time on
+ * The one exception is `MCP_AUTH_TOKEN`, which `src/http/auth.js` reads at call time on
  * purpose: a secret captured once at load is whatever was set then, and the token
  * checks must see it change.
  */

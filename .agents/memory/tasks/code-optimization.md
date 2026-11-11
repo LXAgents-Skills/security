@@ -45,3 +45,15 @@ Landed. `src/config.js` reads `MCP_TRANSPORT`, `PORT`, `HOST`, `MCP_CLUSTER_WORK
 the environment themselves. `MCP_AUTH_TOKEN` stays in `auth.js`, read at call time. The
 exported `allowedHosts()` is gone; `createApp` takes `allowedHosts` as an option.
 `test/config.test.js` pins the defaults and the parsing.
+
+### Task 5 — refactor/http-entry
+
+Landed. `src/index.js` is a three-line entry point over `src/run.js`, which imports
+`src/stdio.js`, `src/http/primary.js` or `src/http/worker.js` once the transport is chosen.
+`app.js` and `auth.js` moved into `src/http/`. `cli.js serve` passes its flags to `loadConfig`
+instead of writing `process.env`; a forked worker re-runs it with the same arguments. Every log
+line, both bins and `package.json` `main` are unchanged. Checked by hand as well as by
+`npm test` (63 tests): `cli.js serve --http` with two workers, the 401, SIGTERM drain, the
+refusal without a token, and stdio `tools/list`. The architecture page and repository map
+show the new layout; the architecture tree still said `tools/` after the migration and now
+says `instructions/`.

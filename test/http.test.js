@@ -8,8 +8,8 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { BODY_LIMIT_BYTES, createApp } from "../src/app.js";
-import { MIN_TOKEN_LENGTH, configuredToken, tokenProblem } from "../src/auth.js";
+import { BODY_LIMIT_BYTES, createApp } from "../src/http/app.js";
+import { MIN_TOKEN_LENGTH, configuredToken, tokenProblem } from "../src/http/auth.js";
 import { SERVER_ID, createServer, listTools } from "../src/server.js";
 
 /**
