@@ -135,7 +135,7 @@ export function createApp({ token = configuredToken() } = {}) {
   });
 
   /**
-   * The MCP endpoint.
+   * The Skill MCP endpoint.
    *
    * Stateless: a fresh `McpServer` and a fresh transport per request, with
    * `sessionIdGenerator: undefined` telling the transport not to mint one. There is no

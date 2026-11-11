@@ -96,12 +96,12 @@ points nowhere useful.
 
 ## The tool layer
 
-There is no hand-written tool in this repository. `src/tools/from-content.js` walks
+There is no hand-written tool in this repository. `src/instructions/from-content.js` walks
 `CONTENT_DIR` once, at import, and builds one tool per `.md` file it finds:
 
 ```js
 for (const path of markdownFiles()) {
-  const name = toolNameFor(path);            // folder dropped, .md off, kebab → snake
+  const name = instructionNameFor(path);     // folder dropped, .md off, kebab → snake
   const text = readFileSync(join(CONTENT_DIR, path), "utf8");
   const { description } = parseFrontmatter(text);
 
@@ -113,11 +113,11 @@ for (const path of markdownFiles()) {
 }
 ```
 
-`CONTENT_TOOLS` is frozen at module scope and `TOOL_FILES` maps each tool name back to the
+`CONTENT_INSTRUCTIONS` is frozen at module scope and `INSTRUCTION_FILES` maps each tool name back to the
 file it serves. `src/server.js` registers the array as-is:
 
 ```js
-const TOOL_MODULES = Object.freeze(CONTENT_TOOLS);
+const INSTRUCTION_MODULES = Object.freeze(CONTENT_INSTRUCTIONS);
 ```
 
 Three things fail **at boot** rather than at the first call, because a set that cannot be
@@ -178,7 +178,7 @@ has to fail closed before anything is served.
 ## The parity guarantee
 
 `src/server.js` holds the only tool list. `listTools()` derives name/description pairs
-from the same `TOOL_MODULES` array used for registration, and `src/cli.js` prints that
+from the same `INSTRUCTION_MODULES` array used for registration, and `src/cli.js` prints that
 rather than keeping a list of its own.
 
 `test/server.test.js` asserts that what the CLI would print matches what an MCP client

@@ -9,7 +9,7 @@ Usage
   lxagents-security
 
 Commands
-  serve            Run as an MCP server
+  serve            Run as a Skill MCP server
   tools            List the tools this server exposes
 
 Options

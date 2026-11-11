@@ -8,7 +8,7 @@ description: How a tool comes to exist - the surface is derived from content/, s
 **Adding a markdown file to `content/` is adding a tool.** There is no tool file to
 write, no import to add, and no entry to put in an array.
 
-The surface is built at boot by `src/tools/from-content.js`, which walks `CONTENT_DIR`
+The surface is built at boot by `src/instructions/from-content.js`, which walks `CONTENT_DIR`
 once and makes one tool per `.md` file it finds. A contributor who follows the older
 text in this file — write `src/tools/{name}.js`, import it, add it to `TOOL_MODULES` —
 would hand-write a module for a guide that already has a tool, and put two tools for one
@@ -32,7 +32,7 @@ So the folder is dropped, and the ten reference guides get long names. That is t
 consequence of naming a tool after the guide it serves rather than after its folder — a
 caller reading the tool list can tell what each one is without opening anything.
 
-`NAME_OVERRIDES` in `src/tools/from-content.js` is the escape hatch, for a filename that
+`NAME_OVERRIDES` in `src/instructions/from-content.js` is the escape hatch, for a filename that
 derives a name saying nothing useful. **This repository has no overrides.** Adding one is
 a naming decision, and it belongs to the owner, not to whoever happened to add the file.
 
@@ -97,5 +97,5 @@ broken:
 * the total served text equals the total text on disk;
 * `LICENSE.txt` is not served.
 
-**If a change to `src/server.js` or `src/tools/from-content.js` makes any of those true
+**If a change to `src/server.js` or `src/instructions/from-content.js` makes any of those true
 of a new tool, the test that should catch it does not exist yet — write it.**
