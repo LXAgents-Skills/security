@@ -29,9 +29,9 @@ nothing but commas and spaces, the variable reads as unset: no list is applied a
 request is served. The server says so on startup, and says it only when it is true.
 
 ```text
-lxagents-security 2.0.3 serving over http on :3000/mcp (all interfaces)
-lxagents-security 2.0.3 bearer token required on every route except GET /healthz.
-lxagents-security 2.0.3 MCP_ALLOWED_HOSTS is unset, so no Host header allow-list is applied.
+lxagents-security 2.0.4 serving over http on :3000/mcp (all interfaces)
+lxagents-security 2.0.4 bearer token required on every route except GET /healthz.
+lxagents-security 2.0.4 MCP_ALLOWED_HOSTS is unset, so no Host header allow-list is applied.
 ```
 
 Set it before exposing the port anywhere but your own machine. The SDK applies host
