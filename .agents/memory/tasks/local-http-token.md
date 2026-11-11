@@ -39,3 +39,8 @@ PowerShell with nothing set. The refusal tests now bind `0.0.0.0` (they exit bef
 New tests cover local without a token on 1 and 2 workers, the localhost-only `Host` guard, a
 token still enforced locally, a short token refused locally, and `isLoopback`. 69 tests pass.
 The README, setup, env, architecture and repository-map docs say local versus server.
+
+### Task 3 — release/2.0.3
+
+Landed. Version `2.0.3`. The changelog says clients need do nothing, and notes that anyone who
+used `start:http` to serve other machines must now pass `--host 0.0.0.0` with the token set.
