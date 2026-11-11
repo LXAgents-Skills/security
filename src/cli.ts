@@ -37,7 +37,7 @@ if (command === "-v" || command === "--version") {
   // Flags override the environment for this run. They are not written back to
   // process.env: a forked HTTP worker re-runs this file with the same arguments, so it
   // reaches the same configuration on its own.
-  const overrides = {};
+  const overrides: NodeJS.ProcessEnv = {};
   if (rest.includes("--http")) overrides.MCP_TRANSPORT = "http";
   if (rest.includes("--stdio")) overrides.MCP_TRANSPORT = "stdio";
 

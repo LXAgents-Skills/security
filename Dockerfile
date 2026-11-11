@@ -1,32 +1,45 @@
 # syntax=docker/dockerfile:1
 
-# The payload is a directory of markdown and a few kilobytes of JavaScript.
-# There is no build step, so this is a single stage: a builder stage would copy
-# the same files twice to produce a smaller context, not a smaller image.
+# Two stages. The source is TypeScript and the image runs the compiled `dist/`, so the
+# first stage installs the full tree (the compiler is a devDependency) and builds, and
+# the second carries only production dependencies, `dist/` and `content/`. Neither the
+# compiler nor the TypeScript source reaches the runtime image.
+FROM node:22-alpine AS build
+
+WORKDIR /srv
+
+# Installed from the lockfile only. `npm ci` fails rather than silently resolving
+# something the lockfile does not contain, which is the point of building an image from
+# a versioned tree. Lifecycle scripts are disabled, so `prepare` does not run here: the
+# build is the explicit next step instead of a side effect of installing.
+COPY package.json package-lock.json tsconfig.json ./
+RUN npm ci --ignore-scripts
+
+COPY src ./src
+RUN npm run build
+
 FROM node:22-alpine
 
-# Lifecycle scripts are disabled. The package declares none, and running them
-# by default is supply-chain risk with nothing to offset it. `--omit=dev` keeps
-# the test-only tree out of the image; `.dockerignore` already excludes the
-# test files themselves, so this image cannot run its own suite.
-#
-# Dependencies are installed from the lockfile only. `npm ci` fails rather than
-# silently resolving something the lockfile does not contain, which is the point
-# of building an image from a versioned tree.
+# Lifecycle scripts are disabled here as well: running them by default is supply-chain
+# risk with nothing to offset it, and `prepare` would need the compiler this stage does
+# not install. `--omit=dev` keeps the compiler and the test-only tree out of the image;
+# `.dockerignore` already excludes the test files themselves, so this image cannot run
+# its own suite.
 WORKDIR /srv
 
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts --omit=dev
 
-# `content/` is the product. It is copied, not generated, and it is the only
-# thing in this image that a change to the repository is expected to alter.
-COPY src ./src
+# `content/` is the product. It is copied, not generated, and it is the only thing in
+# this image that a change to the set is expected to alter. `dist/` is the server,
+# compiled in the first stage.
+COPY --from=build /srv/dist ./dist
 COPY content ./content
 
 # Not root. The process reads files and answers JSON-RPC, and nothing else.
 USER node
 
-# 3000 is `src/index.js`'s default, and `PORT` overrides it at runtime. The
+# 3000 is `dist/index.js`'s default, and `PORT` overrides it at runtime. The
 # interface is `HOST`, which also defaults to 0.0.0.0 - every IPv4 interface.
 #
 # EXPOSE documents the port; it does not publish it. `docker run -p 3000:3000 …`
@@ -58,4 +71,4 @@ EXPOSE 3000
 # this machine. The Host allow-list is off unless it is set, and the server says
 # so on startup. See wiki/environments/env.md.
 ENV MCP_TRANSPORT=http
-ENTRYPOINT ["node", "src/index.js"]
+ENTRYPOINT ["node", "dist/index.js"]

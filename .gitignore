@@ -9,3 +9,6 @@ mcps/
 
 # Untracked working plan - never staged, never committed
 /.agents/plans/
+
+# Compiled output - built by `npm install` (the prepare script), never committed
+dist/

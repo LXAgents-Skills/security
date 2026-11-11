@@ -3,6 +3,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 import { test } from "node:test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { CONTENT_DIR } from "../src/version.js";
 import {
@@ -17,7 +18,7 @@ import { SERVER_ID, createServer, listTools } from "../src/server.js";
  * Connect an in-memory client to a fresh server and hand both to `run`,
  * closing them afterwards whether or not `run` throws.
  */
-async function withClient(run) {
+async function withClient<T>(run: (pair: { client: Client; server: McpServer }) => Promise<T>): Promise<T> {
   const server = createServer({ version: "0.0.0" });
   const client = new Client({ name: "test-client", version: "0.0.0" });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
@@ -36,15 +37,16 @@ async function withClient(run) {
 }
 
 /** The text of a single-content tool result. */
-function textOf(result) {
+function textOf(result: Awaited<ReturnType<Client["callTool"]>>): string {
   assert.notEqual(result.isError, true, "expected a successful result");
-  assert.equal(result.content.length, 1, "expected exactly one content block");
-  return result.content[0].text;
+  const content = result.content as { type: string; text?: string }[];
+  assert.equal(content.length, 1, "expected exactly one content block");
+  return content[0]!.text ?? "";
 }
 
 /** Every markdown file in the served set, as [path-relative-to-content, absolute]. */
-async function markdownFiles(dir = CONTENT_DIR) {
-  const found = [];
+async function markdownFiles(dir: string = CONTENT_DIR): Promise<[string, string][]> {
+  const found: [string, string][] = [];
 
   for (const entry of await readdir(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name);
@@ -59,7 +61,7 @@ async function markdownFiles(dir = CONTENT_DIR) {
 
 test("the CLI list and the MCP tool list agree", async () => {
   await withClient(async ({ client }) => {
-    assert.equal(client.getServerVersion().name, SERVER_ID);
+    assert.equal(client.getServerVersion()?.name, SERVER_ID);
 
     const { tools } = await client.listTools();
 
@@ -136,13 +138,11 @@ test("every tool ID is the prefix plus its own filename, or a shortened override
   for (const [name, path] of INSTRUCTION_FILES) {
     const base =
       shortened.get(path) ??
-      path
-        .split("/")
-        .pop()
+      (path.split("/").pop() ?? path)
         .replace(/\.md$/, "")
         .toLowerCase()
         .replace(/-/g, "_");
-    const expected = `${ID_PREFIX}_${base}`;
+    const expected: string = `${ID_PREFIX}_${base}`;
 
     assert.equal(name, expected, `${path} derives ${name}, expected ${expected}`);
     assert.match(name, /^[a-z][a-z0-9_]{0,127}$/, `${name} is not a usable tool name`);
@@ -268,7 +268,7 @@ test("skill is the entry point and routes to the ten reference guides", async ()
     for (const [path] of await markdownFiles()) {
       if (path === "SKILL.md" || path === "automation.md") continue;
 
-      const base = path.split("/").pop();
+      const base = path.split("/").pop() ?? path;
 
       // `<language>-<framework>-<stack>-security.md`, or
       // `<language>-general-<stack>-security.md`. The stack is itself hyphenated,
@@ -318,7 +318,7 @@ test("no tool accepts a credential", async () => {
 });
 
 // The tool surface only. The HTTP transport reads one credential, MCP_AUTH_TOKEN, and that is
-// covered in test/http.test.js; nothing a tool does depends on it.
+// covered in test/http.test.ts; nothing a tool does depends on it.
 test("the tool surface reads no credential and needs no key to answer", async () => {
   delete process.env.API_KEY;
 
@@ -338,14 +338,14 @@ test("the CLI help names every environment variable the server reads", async () 
   const { execFile } = await import("node:child_process");
   const { promisify } = await import("node:util");
   const root = join(CONTENT_DIR, "..");
-  const { stdout: help } = await promisify(execFile)(process.execPath, [join(root, "src/cli.js"), "--help"]);
+  const { stdout: help } = await promisify(execFile)(process.execPath, [join(root, "dist/cli.js"), "--help"]);
 
-  const sources = [];
-  async function collect(dir) {
+  const sources: string[] = [];
+  async function collect(dir: string): Promise<void> {
     for (const entry of await readdir(dir, { withFileTypes: true })) {
       const full = join(dir, entry.name);
       if (entry.isDirectory()) await collect(full);
-      else if (entry.name.endsWith(".js")) sources.push(await readFile(full, "utf8"));
+      else if (entry.name.endsWith(".ts")) sources.push(await readFile(full, "utf8"));
     }
   }
   await collect(join(root, "src"));

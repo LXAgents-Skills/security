@@ -3,23 +3,27 @@
   "version": "2.0.3",
   "description": "Read-only Skill MCP server delivering the global security instruction set for python, javascript/typescript, and go.",
   "type": "module",
-  "main": "src/index.js",
+  "main": "dist/index.js",
   "bin": {
-    "lxagents-security": "src/cli.js",
-    "lxagents-security-server": "src/index.js"
+    "lxagents-security": "dist/cli.js",
+    "lxagents-security-server": "dist/index.js"
   },
   "files": [
-    "src",
+    "dist",
     "content",
     "LICENSE",
     "README.md"
   ],
   "scripts": {
-    "start": "node src/index.js",
-    "start:http": "node src/cli.js serve --http --host 127.0.0.1",
-    "cli": "node src/cli.js",
-    "test": "node --test",
-    "inspect": "npx @modelcontextprotocol/inspector node src/index.js"
+    "build": "tsc",
+    "prepare": "tsc",
+    "typecheck": "tsc -p test/tsconfig.json",
+    "start": "node dist/index.js",
+    "start:http": "node dist/cli.js serve --http --host 127.0.0.1",
+    "cli": "node dist/cli.js",
+    "pretest": "npm run build",
+    "test": "node --import tsx --test test/*.test.ts",
+    "inspect": "npx @modelcontextprotocol/inspector node dist/index.js"
   },
   "engines": {
     "node": ">=20"

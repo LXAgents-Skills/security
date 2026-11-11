@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { type ChildProcess, spawn } from "node:child_process";
 import { createServer as createNetServer, request } from "node:http";
+import type { AddressInfo } from "node:net";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
@@ -16,7 +17,7 @@ import { ID_PREFIX } from "../src/instructions/from-content.js";
 /**
  * The Streamable HTTP transport, over a real socket.
  *
- * `test/server.test.js` exercises the server in memory: same code, no listener. What
+ * `test/server.test.ts` exercises the server in memory: same code, no listener. What
  * that cannot reach is the part that only exists when there is a socket - the route
  * table, the transport's own framing, the host it binds, the shape of its errors, and
  * what a shutdown does to a request that is still in flight. This file is that half,
@@ -37,7 +38,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const TEST_TOKEN = "test-token-0123456789abcdef0123456789abcdef";
 
 /** An `Authorization` header carrying `token`. */
-const bearer = (token = TEST_TOKEN) => ({ authorization: `Bearer ${token}` });
+const bearer = (token: string = TEST_TOKEN): { authorization: string } => ({ authorization: `Bearer ${token}` });
 
 /**
  * How long to wait for the startup line.
@@ -57,38 +58,75 @@ const READY_TIMEOUT_MS = 30_000;
  * There is a window between the release and the child's bind; it is small and it is the
  * same window any free-port helper has.
  */
-function freePort() {
+function freePort(): Promise<number> {
   return new Promise((resolvePort, reject) => {
     const probe = createNetServer();
     probe.on("error", reject);
     probe.listen(0, "127.0.0.1", () => {
-      const { port } = probe.address();
+      const { port } = probe.address() as AddressInfo;
       probe.close(() => resolvePort(port));
     });
   });
 }
 
+/** The JSON fields this file reads from a response body: health, and JSON-RPC errors. */
+interface RpcBody {
+  jsonrpc?: string;
+  id?: string | number | null;
+  status?: string;
+  server?: string;
+  version?: string;
+  error?: { code: number; message: string };
+  result?: { tools: { name: string }[] };
+}
+
 /** Every child started by this file, so a failed assertion cannot leak one. */
-const openServers = new Set();
+const openServers = new Set<ChildProcess>();
 
 after(() => {
   for (const child of openServers) child.kill("SIGKILL");
 });
 
+/** What a test may set on the server it starts. */
+interface ServerOptions {
+  env?: Record<string, string>;
+}
+
+/** How a child process ended. */
+interface ExitStatus {
+  code: number | null;
+  signal: NodeJS.Signals | null;
+}
+
+/** A started server, and the probes a test reads its output through. */
+interface RunningServer {
+  child: ChildProcess;
+  port: number;
+  url: string;
+  output: () => string;
+  countOutput: (needle: string) => number;
+  stdout: () => string;
+  stderr: () => string;
+  waitForOutput: (needle: string, ms?: number) => Promise<boolean>;
+  waitForCount: (needle: string, n: number, ms?: number) => Promise<boolean>;
+}
+
+/** The compiled server entry point, relative to the repository root. */
+const ENTRY = "dist/index.js";
+
 /**
- * Start `src/index.js` and wait until it is listening.
+ * Start the compiled `dist/index.js` and wait until it is listening.
+ *
+ * The compiled entry point, not the source: it is what a clone runs after `npm install`,
+ * and `npm test` builds it first.
  *
  * Both streams are captured, because the startup line is on stderr and stdout must stay
  * empty on a server process - a line on stdout would be a defect worth failing on.
- *
- * @param {{ env?: Record<string, string> }} [options]
- * @returns {Promise<{ child: import("node:child_process").ChildProcess, port: number,
- *   url: string, output: () => string, waitForOutput: (needle: string, ms?: number) => Promise<boolean> }>}
  */
-async function startServer({ env = {} } = {}) {
+async function startServer({ env = {} }: ServerOptions = {}): Promise<RunningServer> {
   const port = await freePort();
 
-  const child = spawn(process.execPath, ["src/index.js"], {
+  const child = spawn(process.execPath, [ENTRY], {
     cwd: ROOT,
     stdio: ["ignore", "pipe", "pipe"],
     env: {
@@ -109,17 +147,17 @@ async function startServer({ env = {} } = {}) {
   let captured = "";
   let stdout = "";
   let stderr = "";
-  child.stdout.on("data", (chunk) => {
+  child.stdout!.on("data", (chunk: Buffer) => {
     captured += chunk;
     stdout += chunk;
   });
-  child.stderr.on("data", (chunk) => {
+  child.stderr!.on("data", (chunk: Buffer) => {
     captured += chunk;
     stderr += chunk;
   });
 
   /** Everything the process has written, on either stream. */
-  const output = () => captured;
+  const output = (): string => captured;
 
   /**
    * How many times `needle` has appeared so far.
@@ -129,10 +167,10 @@ async function startServer({ env = {} } = {}) {
    * observes that a fork happened without adding a pid to a response body or a field to
    * a log line that existing tests pin.
    */
-  const countOutput = (needle) => captured.split(needle).length - 1;
+  const countOutput = (needle: string): number => captured.split(needle).length - 1;
 
   /** Resolve true once `needle` has appeared, false if `ms` runs out first. */
-  const waitForOutput = (needle, ms = READY_TIMEOUT_MS) =>
+  const waitForOutput = (needle: string, ms: number = READY_TIMEOUT_MS): Promise<boolean> =>
     new Promise((resolveWait) => {
       if (captured.includes(needle)) {
         resolveWait(true);
@@ -151,7 +189,7 @@ async function startServer({ env = {} } = {}) {
     });
 
   /** Resolve true once `needle` has appeared `n` times, false if `ms` runs out first. */
-  const waitForCount = (needle, n, ms = READY_TIMEOUT_MS) =>
+  const waitForCount = (needle: string, n: number, ms: number = READY_TIMEOUT_MS): Promise<boolean> =>
     new Promise((resolveWait) => {
       if (countOutput(needle) >= n) {
         resolveWait(true);
@@ -169,14 +207,14 @@ async function startServer({ env = {} } = {}) {
       }, 50);
     });
 
-  const exited = new Promise((resolveExit) => {
+  const exited = new Promise<ExitStatus>((resolveExit) => {
     child.once("exit", (code, signal) => resolveExit({ code, signal }));
   });
 
   // Either the startup line arrives, or the process dies trying - whichever comes
   // first. A server that exited quietly is a failure to report with its own output
   // attached, not a server to test against.
-  const ready = await Promise.race([
+  const ready: { ok?: boolean; exit?: ExitStatus } = await Promise.race([
     waitForOutput("serving over http").then((ok) => ({ ok })),
     exited.then((exit) => ({ exit })),
   ]);
@@ -203,11 +241,8 @@ async function startServer({ env = {} } = {}) {
 
 /**
  * Start a server, hand it to `run`, and stop it afterwards whether or not `run` throws.
- *
- * @param {object} options
- * @param {(server: Awaited<ReturnType<typeof startServer>>) => Promise<void>} run
  */
-async function withServer(options, run) {
+async function withServer<T>(options: ServerOptions, run: (server: RunningServer) => Promise<T>): Promise<T> {
   const server = await startServer(options);
   try {
     return await run(server);
@@ -218,11 +253,8 @@ async function withServer(options, run) {
 
 /**
  * Connect an MCP client to a running server over a real socket, carrying the test token.
- *
- * @param {string} url
- * @param {{ token?: string }} [options]
  */
-async function connect(url, { token = TEST_TOKEN } = {}) {
+async function connect(url: string, { token = TEST_TOKEN }: { token?: string } = {}): Promise<Client> {
   const client = new Client({ name: "http-test-client", version: "0.0.0" });
   await client.connect(
     new StreamableHTTPClientTransport(new URL(`${url}/mcp`), {
@@ -233,10 +265,11 @@ async function connect(url, { token = TEST_TOKEN } = {}) {
 }
 
 /** The text of a single-content tool result. */
-function textOf(result) {
+function textOf(result: Awaited<ReturnType<Client["callTool"]>>): string {
   assert.notEqual(result.isError, true, "expected a successful result");
-  assert.equal(result.content.length, 1, "expected exactly one content block");
-  return result.content[0].text;
+  const content = result.content as { type: string; text?: string }[];
+  assert.equal(content.length, 1, "expected exactly one content block");
+  return content[0]!.text ?? "";
 }
 
 /** An in-memory client, the reference the socket client is compared against. */
@@ -259,12 +292,12 @@ async function inMemoryClient() {
 test("the health check answers without a session", async () => {
   await withServer({}, async ({ url }) => {
     const response = await fetch(`${url}/healthz`);
-    const body = await response.json();
+    const body = (await response.json()) as RpcBody;
 
     assert.equal(response.status, 200);
     assert.equal(body.status, "ok");
     assert.equal(body.server, SERVER_ID);
-    assert.match(body.version, /^\d+\.\d+\.\d+/);
+    assert.match(body.version ?? "", /^\d+\.\d+\.\d+/);
   });
 });
 
@@ -358,7 +391,7 @@ test("a tool call over HTTP returns the file byte-identically", async () => {
       );
 
       // \r? because a checkout on Windows serves CRLF, and the bytes are served as
-      // they are on disk. The same tolerance is in test/server.test.js.
+      // they are on disk. The same tolerance is in test/server.test.ts.
       assert.match(text, /^---\r?\n/, "frontmatter is part of the served text");
       assert.ok(text.length > 1000, "the guide came back empty or truncated");
     } finally {
@@ -371,7 +404,7 @@ test("the server's own source and manifest are unreachable over HTTP", async () 
   // There is no `path` argument to aim at them, and no tool that reads anything but
   // its own file. That is the whole defence, so it is asserted as a fact about the
   // surface rather than as a set of payloads that a handler happens to refuse: a
-  // container copies `src/` and `content/` side by side, so the server's own source
+  // container copies `dist/` and `content/` side by side, so the server's own source
   // and its manifest are the nearest neighbours of the set.
   await withServer({}, async ({ url }) => {
     const client = await connect(url);
@@ -388,7 +421,7 @@ test("the server's own source and manifest are unreachable over HTTP", async () 
       }
 
       // And nothing outside the set is registered: a tool serving `package.json` or
-      // `src/server.js` would be a door the generator does not open.
+      // `src/server.ts` would be a door the generator does not open.
       assert.deepEqual(
         tools.map((tool) => tool.name).sort(),
         [
@@ -415,10 +448,10 @@ test("the server's own source and manifest are unreachable over HTTP", async () 
 test("an unknown route says what this server does not serve", async () => {
   await withServer({}, async ({ url }) => {
     const response = await fetch(`${url}/nope`, { headers: bearer() });
-    const body = await response.json();
+    const body = (await response.json()) as RpcBody;
 
     assert.equal(response.status, 404);
-    assert.match(body.error.message, /Not found: \/nope/);
+    assert.match(body.error?.message ?? "", /Not found: \/nope/);
   });
 });
 
@@ -427,7 +460,7 @@ test("GET /mcp is refused rather than served", async () => {
     const response = await fetch(`${url}/mcp`, { headers: bearer() });
 
     assert.equal(response.status, 405);
-    assert.match((await response.json()).error.message, /stateless mode/);
+    assert.match(((await response.json()) as RpcBody).error?.message ?? "", /stateless mode/);
   });
 });
 
@@ -475,7 +508,7 @@ test(
   { skip: process.platform === "win32" ? "no signal delivery on Windows" : false },
   async () => {
     await withServer({}, async ({ child, url, output }) => {
-      const exited = new Promise((resolveExit) =>
+      const exited = new Promise<ExitStatus>((resolveExit) =>
         child.once("exit", (code, signal) => resolveExit({ code, signal }))
       );
       child.kill("SIGINT");
@@ -500,11 +533,16 @@ test(
  * client that silently drops it sends the loopback name every time - so a test written
  * with `fetch` would exercise the allow-list and conclude whatever the real control
  * does, which is the worst way to test a security control.
- *
- * @param {{ url: string, host: string, path?: string }} options
- * @returns {Promise<{ status: number, body: string }>}
  */
-function requestWithHost({ url, host, path = "/healthz" }) {
+function requestWithHost({
+  url,
+  host,
+  path = "/healthz",
+}: {
+  url: string;
+  host: string;
+  path?: string;
+}): Promise<{ status: number; body: string }> {
   const target = new URL(path, url);
 
   return new Promise((resolveRequest, rejectRequest) => {
@@ -519,10 +557,10 @@ function requestWithHost({ url, host, path = "/healthz" }) {
       (res) => {
         let body = "";
         res.setEncoding("utf8");
-        res.on("data", (chunk) => {
+        res.on("data", (chunk: string) => {
           body += chunk;
         });
-        res.on("end", () => resolveRequest({ status: res.statusCode, body }));
+        res.on("end", () => resolveRequest({ status: res.statusCode ?? 0, body }));
       }
     );
 
@@ -628,11 +666,11 @@ test("a body over the limit is refused, and says so in the JSON-RPC envelope", a
       headers: { "content-type": "application/json", ...bearer() },
       body: oversized,
     });
-    const body = await response.json();
+    const body = (await response.json()) as RpcBody;
 
     assert.equal(response.status, 400);
     assert.equal(body.jsonrpc, "2.0");
-    assert.equal(body.error.code, -32700);
+    assert.equal(body.error?.code, -32700);
   });
 });
 
@@ -647,11 +685,11 @@ test("malformed JSON is refused with exactly the same answer as a body that is t
       headers: { "content-type": "application/json", ...bearer() },
       body: "{ this is not json",
     });
-    const body = await response.json();
+    const body = (await response.json()) as RpcBody;
 
     assert.equal(response.status, 400);
-    assert.equal(body.error.code, -32700);
-    assert.equal(body.error.message, "Parse error: request body is not valid JSON");
+    assert.equal(body.error?.code, -32700);
+    assert.equal(body.error?.message, "Parse error: request body is not valid JSON");
   });
 });
 
@@ -718,7 +756,7 @@ test("MCP_CLUSTER_WORKERS=2 binds the port from two separate workers", async () 
     );
     for (const response of responses) {
       assert.equal(response.status, 200);
-      assert.equal((await response.json()).server, SERVER_ID);
+      assert.equal(((await response.json()) as RpcBody).server, SERVER_ID);
     }
   });
 });
@@ -800,9 +838,9 @@ test(
       // show: something else can bind it again.
       const rebound = createNetServer();
       try {
-        await new Promise((resolveBind, rejectBind) => {
+        await new Promise<void>((resolveBind, rejectBind) => {
           rebound.on("error", rejectBind);
-          rebound.listen(port, "127.0.0.1", resolveBind);
+          rebound.listen(port, "127.0.0.1", () => resolveBind());
         });
       } finally {
         await new Promise((resolveClose) => rebound.close(resolveClose));
@@ -820,7 +858,7 @@ test(
     await withServer({ env: { MCP_CLUSTER_WORKERS: "2" } }, async ({ child, output, waitForCount }) => {
       assert.ok(await waitForCount("serving over http", 2), "the fork did not happen");
 
-      const exited = new Promise((resolveExit) =>
+      const exited = new Promise<ExitStatus>((resolveExit) =>
         child.once("exit", (code, signal) => resolveExit({ code, signal }))
       );
       child.kill("SIGINT");
@@ -848,7 +886,7 @@ test(
     await withServer({ env: { MCP_CLUSTER_WORKERS: "2" } }, async ({ child, output, waitForCount }) => {
       assert.ok(await waitForCount("serving over http", 2), "the fork did not happen");
 
-      const exited = new Promise((resolveExit) =>
+      const exited = new Promise<{ code: number | null }>((resolveExit) =>
         child.once("exit", (code) => resolveExit({ code }))
       );
 
@@ -877,7 +915,7 @@ test("stdio forks nothing, because a worker's stdout would corrupt the stream", 
   const client = new Client({ name: "stdio-cluster-test", version: "0.0.0" });
   const transport = new StdioClientTransport({
     command: process.execPath,
-    args: ["src/index.js"],
+    args: [ENTRY],
     cwd: ROOT,
     // No token, deliberately: the token belongs to the HTTP transport, and a local
     // process that is spawned by its own client has nobody to authenticate. Blanked
@@ -925,7 +963,7 @@ test(
      * `children` lives under the thread directory rather than the process one, which
      * is the shape the kernel has and the shape every tool on Linux expects.
      */
-    const childrenOf = async (pid) => {
+    const childrenOf = async (pid: number | undefined): Promise<number[]> => {
       const listed = await readFile(`/proc/${pid}/task/${pid}/children`, "utf8");
       return listed.split(/\s+/).filter(Boolean).map(Number);
     };
@@ -980,7 +1018,7 @@ const LIST_TOOLS = {
 };
 
 /** `LIST_TOOLS` with an extra header merged in. */
-const withHeaders = (extra) => ({ ...LIST_TOOLS, headers: { ...LIST_TOOLS.headers, ...extra } });
+const withHeaders = (extra: Record<string, string>): RequestInit => ({ ...LIST_TOOLS, headers: { ...LIST_TOOLS.headers, ...extra } });
 
 /**
  * Start a process that is expected to stop, and report how it stopped.
@@ -990,11 +1028,10 @@ const withHeaders = (extra) => ({ ...LIST_TOOLS, headers: { ...LIST_TOOLS.header
  * failure.
  *
  * @param {{ env?: Record<string, string> }} [options]
- * @returns {Promise<{ code: number | string | null, output: string }>}
  */
-async function runToExit({ env = {} } = {}) {
+async function runToExit({ env = {} }: ServerOptions = {}): Promise<{ code: number | string | null; output: string }> {
   const port = await freePort();
-  const child = spawn(process.execPath, ["src/index.js"], {
+  const child = spawn(process.execPath, [ENTRY], {
     cwd: ROOT,
     stdio: ["ignore", "pipe", "pipe"],
     env: { ...process.env, MCP_TRANSPORT: "http", PORT: String(port), HOST: "127.0.0.1", ...env },
@@ -1002,10 +1039,10 @@ async function runToExit({ env = {} } = {}) {
   openServers.add(child);
 
   let output = "";
-  child.stdout.on("data", (chunk) => (output += chunk));
-  child.stderr.on("data", (chunk) => (output += chunk));
+  child.stdout!.on("data", (chunk: Buffer) => (output += chunk));
+  child.stderr!.on("data", (chunk: Buffer) => (output += chunk));
 
-  return new Promise((resolveRun) => {
+  return new Promise<{ code: number | string | null; output: string }>((resolveRun) => {
     const timer = setTimeout(() => {
       child.kill("SIGKILL");
       resolveRun({ code: "still running", output });
@@ -1021,14 +1058,14 @@ async function runToExit({ env = {} } = {}) {
 test("a request with no token is refused with a 401 the client can read", async () => {
   await withServer({}, async ({ url }) => {
     const response = await fetch(`${url}/mcp`, LIST_TOOLS);
-    const body = await response.json();
+    const body = (await response.json()) as RpcBody;
 
     assert.equal(response.status, 401);
     assert.equal(response.headers.get("www-authenticate"), 'Bearer realm="mcp"');
     assert.equal(body.jsonrpc, "2.0");
     assert.equal(body.id, null);
-    assert.equal(body.error.code, -32001);
-    assert.match(body.error.message, /send the token as Authorization: Bearer/);
+    assert.equal(body.error?.code, -32001);
+    assert.match(body.error?.message ?? "", /send the token as Authorization: Bearer/);
   });
 });
 
@@ -1045,14 +1082,14 @@ test("a wrong token is refused, whatever its length, and never with a 500", asyn
 
     for (const token of wrong) {
       const response = await fetch(`${url}/mcp`, withHeaders(bearer(token)));
-      const body = await response.json();
+      const body = (await response.json()) as RpcBody;
 
       assert.equal(response.status, 401, `a ${token.length}-character token must be refused`);
       assert.equal(
         response.headers.get("www-authenticate"),
         'Bearer realm="mcp", error="invalid_token"'
       );
-      assert.match(body.error.message, /the token is not valid/);
+      assert.match(body.error?.message ?? "", /the token is not valid/);
     }
   });
 });
@@ -1177,7 +1214,7 @@ test("a token of exactly the minimum length is accepted", async () => {
 });
 
 test("HTTP refuses to start without a usable token", async () => {
-  const cases = [
+  const cases: [string, string, RegExp][] = [
     ["unset", "", /MCP_AUTH_TOKEN is not set/],
     ["only whitespace", "  \n ", /MCP_AUTH_TOKEN is not set/],
     ["too short", "short-secret", /MCP_AUTH_TOKEN is 12 characters, and it must be at least 32/],
@@ -1237,11 +1274,11 @@ test("tokenProblem and configuredToken", () => {
   assert.equal(tokenProblem(""), "MCP_AUTH_TOKEN is not set");
   assert.equal(tokenProblem("", { required: false }), null, "no token is fine when not required");
   assert.match(
-    tokenProblem("short", { required: false }),
+    tokenProblem("short", { required: false }) ?? "",
     /must be at least 32/,
     "a token that is set is checked even when none is required"
   );
-  assert.match(tokenProblem("k".repeat(31)), /is 31 characters, and it must be at least 32/);
+  assert.match(tokenProblem("k".repeat(31)) ?? "", /is 31 characters, and it must be at least 32/);
   assert.equal(tokenProblem("k".repeat(32)), null);
   assert.equal(tokenProblem(TEST_TOKEN), null);
 
@@ -1261,7 +1298,7 @@ test("stdio never reads the token, so even an unusable one does not stop it", as
   const client = new Client({ name: "stdio-token-test", version: "0.0.0" });
   const transport = new StdioClientTransport({
     command: process.execPath,
-    args: ["src/index.js"],
+    args: [ENTRY],
     cwd: ROOT,
     // Too short to start HTTP with. If stdio read the variable at all, this would fail it.
     env: { ...process.env, MCP_TRANSPORT: "stdio", MCP_AUTH_TOKEN: "x" },
