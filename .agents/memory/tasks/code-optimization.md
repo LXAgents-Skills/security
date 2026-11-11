@@ -57,3 +57,10 @@ line, both bins and `package.json` `main` are unchanged. Checked by hand as well
 refusal without a token, and stdio `tools/list`. The architecture page and repository map
 show the new layout; the architecture tree still said `tools/` after the migration and now
 says `instructions/`.
+
+### Task 6 — release/2.0.1
+
+Landed. The owner asked for a release branch and a patch bump only, so the version is `2.0.1`. It
+also ships the earlier Skills migration, which had no release of its own. `package.json`, the
+lockfile, the image tags in the docs and the Dockerfile comments, `wiki/logs/2/0/1/CHANGELOG.md`
+and its `logs-index.md` row carry it. No git tag was created.
