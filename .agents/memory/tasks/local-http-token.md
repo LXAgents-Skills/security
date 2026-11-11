@@ -26,3 +26,16 @@ that is set but too short is still refused, even on loopback.
 ### Task 1 — plan/local-http-token
 
 Landed: this record and its row in `memory-index.md`.
+
+### Task 2 — feat/local-http-token
+
+Landed. `src/config.js` exports `isLoopback` and sets `config.local`. `tokenProblem` takes
+`{ required }`: no token is fine when it is false, but a short token is still refused.
+`createApp({ local })` builds without the token check only when `local` is set and the token is
+empty, and it then mounts the SDK's `localhostHostValidation` unless `MCP_ALLOWED_HOSTS` names a
+list. The primary requires the token only off loopback. The startup line says which control is
+on. `serve --host` was added, and `npm run start:http` binds `127.0.0.1`, so it runs from
+PowerShell with nothing set. The refusal tests now bind `0.0.0.0` (they exit before binding).
+New tests cover local without a token on 1 and 2 workers, the localhost-only `Host` guard, a
+token still enforced locally, a short token refused locally, and `isLoopback`. 69 tests pass.
+The README, setup, env, architecture and repository-map docs say local versus server.

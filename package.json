@@ -16,7 +16,7 @@
   ],
   "scripts": {
     "start": "node src/index.js",
-    "start:http": "node src/cli.js serve --http",
+    "start:http": "node src/cli.js serve --http --host 127.0.0.1",
     "cli": "node src/cli.js",
     "test": "node --test",
     "inspect": "npx @modelcontextprotocol/inspector node src/index.js"

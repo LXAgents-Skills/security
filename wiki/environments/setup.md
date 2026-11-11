@@ -29,8 +29,12 @@ There is also a container image, for a host that cannot run Node at all — see
 Nothing here reaches an external service, so no tool needs a key, and **stdio needs no token
 and no configuration**: the server starts, lists its twelve tools, and answers.
 
-**The HTTP transport requires `MCP_AUTH_TOKEN`**, a bearer token of at least 32 characters. It
-will not start without one, and every request except `GET /healthz` must carry it as
+**A local install needs no token.** stdio never reads one, and HTTP bound to loopback
+(`127.0.0.1`, `localhost`, `::1`) runs without one too, limited to a `localhost` `Host` header so a
+web page cannot reach it by DNS rebinding. **A server install needs one:** HTTP bound to any other
+address — the `0.0.0.0` default, a container, a public host — will not start without it. A token
+that is set is always enforced, on any bind. The token is at least 32
+characters, and every request except `GET /healthz` must carry it as
 `Authorization: Bearer <token>`. The other environment variables — `MCP_TRANSPORT`, `PORT`,
 `HOST`, `MCP_ALLOWED_HOSTS` and `MCP_CLUSTER_WORKERS` — are optional. `MCP_ALLOWED_HOSTS` is a
 `Host` allow-list for the HTTP transport and is **off unless you set it**; the server says so
@@ -130,14 +134,17 @@ For a remote connector, point the client at `https://<host>/mcp`, including the
 npm start
 lxagents-security serve --stdio
 
-# streamable HTTP - needs a token, or it exits 1 and says why
-export MCP_AUTH_TOKEN="$(openssl rand -hex 32)"
+# streamable HTTP, local - binds 127.0.0.1, needs no token
 npm run start:http
-lxagents-security serve --http --port 3000
+lxagents-security serve --http --host 127.0.0.1 --port 3000
+
+# streamable HTTP, server - needs a token, or it exits 1 and says why
+export MCP_AUTH_TOKEN="$(openssl rand -hex 32)"
+lxagents-security serve --http --host 0.0.0.0 --port 3000
 ```
 
-`HOST` has no flag — set it in the environment, for example
-`HOST=127.0.0.1 npm run start:http` to keep the port off every interface.
+`--host` overrides `HOST` for one run. Without either, the server binds `0.0.0.0` and needs a
+token.
 
 Check it is up:
 

@@ -1,16 +1,17 @@
 # Environment Variables
 
 Six variables. **Five are optional, and stdio needs none of them.** The sixth,
-`MCP_AUTH_TOKEN`, is a secret and is **required by the HTTP transport**: without it the
-HTTP server does not start.
+`MCP_AUTH_TOKEN`, is a secret and is **required by the HTTP transport on any bind but
+loopback**: without it a server install does not start, and a local one bound to `127.0.0.1`
+runs without it.
 
 | Variable | Default | Read by | Effect |
 |---|---|---|---|
 | `MCP_TRANSPORT` | `stdio` | `src/config.js` | `stdio` or `http` (`streamable-http` is accepted too). `http` is **Streamable HTTP on `/mcp`** — it is the only HTTP transport this server has. |
 | `PORT` | `3000` | `src/config.js` | The port the HTTP transport listens on. Ignored on stdio. |
-| `HOST` | `0.0.0.0` | `src/config.js` | The interface the HTTP transport binds. Ignored on stdio. |
+| `HOST` | `0.0.0.0` | `src/config.js` | The interface the HTTP transport binds. Ignored on stdio. A loopback value (`127.0.0.1`, `localhost`, `::1`) makes the install local: no token required. `--host` overrides it. |
 | `MCP_ALLOWED_HOSTS` | *unset* | `src/config.js` | Comma-separated `Host` allow-list. **Unset means no allow-list is applied.** Read on the HTTP transport only. |
-| `MCP_AUTH_TOKEN` | **none - required for HTTP** | `src/http/auth.js` | The bearer token every HTTP request except `GET /healthz` must carry. At least 32 characters. **HTTP will not start without it.** stdio never reads it. |
+| `MCP_AUTH_TOKEN` | **none - required for HTTP off loopback** | `src/http/auth.js` | The bearer token every HTTP request except `GET /healthz` must carry. At least 32 characters. **HTTP bound to anything but loopback will not start without it.** Optional on loopback, where it is still enforced if set. stdio never reads it. |
 | `MCP_CLUSTER_WORKERS` | *the CPU count* | `src/config.js` | How many HTTP workers to fork. **`1` means no fork at all** — one process, one listener. Read on the HTTP transport only; stdio never forks. |
 
 `0.0.0.0` is every IPv4 interface. It is **not** the dual-stack `::` that Node binds when
@@ -45,16 +46,19 @@ markdown either way.
 
 ## `MCP_AUTH_TOKEN`
 
-The transport decides. A server a client spawns is a pipe on the client's own machine, so
-there is nobody to authenticate; a server on a port is reachable by anyone who can open a
-socket, so every request must prove the caller holds the token. An optional token would mean
+Where it listens decides. A server a client spawns is a pipe on the client's own machine, and a
+server bound to loopback can only be reached from that machine too, so neither needs a token. A
+loopback server without one answers only a `localhost`, `127.0.0.1` or `[::1]` `Host` header
+(unless `MCP_ALLOWED_HOSTS` names others), so a web page that rebinds its own name to
+`127.0.0.1` cannot read it through the browser. A server on any other address is reachable by
+anyone who can open a socket, so every request must prove the caller holds the token. An optional token would mean
 a deployment that forgot to set it ran open and said nothing, so instead the process refuses
 to start: one line on stderr naming the variable, and exit code `1`. `createApp` refuses to
 build without it too, so the check cannot be skipped by calling the app directly.
 
 ```bash
 export MCP_AUTH_TOKEN="$(openssl rand -hex 32)"    # 64 hex characters; keep it, clients need it
-npm run start:http
+lxagents-security serve --http --host 0.0.0.0
 ```
 
 * **Length.** Under 32 characters is refused at startup, so a value like `test` is found by

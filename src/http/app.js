@@ -1,6 +1,9 @@
 import express from "express";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { hostHeaderValidation } from "@modelcontextprotocol/sdk/server/middleware/hostHeaderValidation.js";
+import {
+  hostHeaderValidation,
+  localhostHostValidation,
+} from "@modelcontextprotocol/sdk/server/middleware/hostHeaderValidation.js";
 import { configuredToken, requireBearerToken, tokenProblem } from "./auth.js";
 import { loadConfig } from "../config.js";
 import { rpcError } from "./rpc-error.js";
@@ -44,14 +47,20 @@ export const BODY_LIMIT_BYTES = 4 * 1024 * 1024;
  * `allowedHosts` is the `Host` header allow-list, from `MCP_ALLOWED_HOSTS` by default; an
  * empty list applies no check.
  *
- * @param {{ token?: string, allowedHosts?: readonly string[] }} [options]
+ * `local` is set when the server binds loopback. Only then may `token` be empty: the app is
+ * built without the token check, and with the localhost `Host` allow-list unless
+ * `allowedHosts` names one. It defaults to `false`, so leaving it out can never turn the
+ * check off.
+ *
+ * @param {{ token?: string, allowedHosts?: readonly string[], local?: boolean }} [options]
  * @returns {import("express").Express}
  */
 export function createApp({
   token = configuredToken(),
   allowedHosts = loadConfig().allowedHosts,
+  local = false,
 } = {}) {
-  const problem = tokenProblem(token);
+  const problem = tokenProblem(token, { required: !local });
   if (problem) {
     throw new Error(`Refusing to build the HTTP app: ${problem}.`);
   }
@@ -77,8 +86,15 @@ export function createApp({
   // factory, and only when the host is loopback. This server binds `0.0.0.0` by
   // default, so without an explicit list there is no `Host` filtering in exactly the
   // deployment — a container, a shared host — where it would matter.
+  //
+  // A local server running without a token gets the localhost list when none is configured:
+  // with no token, the `Host` check is what stops a web page that rebinds its own name to
+  // 127.0.0.1 from reading this server through the browser.
+  const open = token === "";
   if (allowedHosts.length > 0) {
     app.use(hostHeaderValidation([...allowedHosts]));
+  } else if (open) {
+    app.use(localhostHostValidation());
   }
 
   // The token check, after the `Host` allow-list and ahead of the body parser and every
@@ -91,8 +107,12 @@ export function createApp({
   // returns only `{ status, server, version }`. The exemption is never looser than the
   // route: express would also match `/healthz/` and `HEAD`, and those fall through to the
   // check and are refused, which is the safe direction to be wrong in.
-  const authenticate = requireBearerToken(token);
+  const authenticate = open ? null : requireBearerToken(token);
   app.use((req, res, next) => {
+    if (!authenticate) {
+      next();
+      return;
+    }
     if (req.method === "GET" && req.path === "/healthz") {
       next();
       return;

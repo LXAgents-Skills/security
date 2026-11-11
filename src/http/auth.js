@@ -10,6 +10,13 @@ import { rpcError } from "./rpc-error.js";
  * to it must prove the caller holds the token — and the server refuses to run HTTP without one,
  * rather than running open and saying so in a log nobody reads.
  *
+ * **Where the socket listens decides whether that is a network.** A server bound to loopback
+ * (`127.0.0.1`, `localhost`, `::1`) can only be reached from this machine, which is the same
+ * trust a stdio pipe has, so a token is optional there: a local install runs without one, and
+ * the localhost `Host` allow-list in `createApp` stops a web page reaching it by DNS
+ * rebinding. Any other bind — `0.0.0.0`, a container, a public address — is a server, and it
+ * still refuses to start without a token. A token that is set is always enforced.
+ *
  * Nothing in this file is reached on the stdio path, and `src/stdio.js` never reads
  * `MCP_AUTH_TOKEN`.
  */
@@ -42,11 +49,15 @@ export function configuredToken() {
  *
  * The message names the variable and the fix and never the value, so it is safe to log.
  *
+ * `required: false` is the local case: no token at all is then fine, but a token that is set
+ * and too short is still a problem, because it was meant to protect something and would not.
+ *
  * @param {string} [token]
+ * @param {{ required?: boolean }} [options]
  * @returns {string | null}
  */
-export function tokenProblem(token = configuredToken()) {
-  if (token === "") return "MCP_AUTH_TOKEN is not set";
+export function tokenProblem(token = configuredToken(), { required = true } = {}) {
+  if (token === "") return required ? "MCP_AUTH_TOKEN is not set" : null;
   if (token.length < MIN_TOKEN_LENGTH) {
     return `MCP_AUTH_TOKEN is ${token.length} characters, and it must be at least ${MIN_TOKEN_LENGTH}`;
   }

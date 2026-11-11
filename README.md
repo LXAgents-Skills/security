@@ -59,14 +59,21 @@ npm start
 On the stdio default, no key, no environment variable, no configuration. The server
 starts and answers with nothing set. No tool reads a credential, on any transport.
 
-**The HTTP transport is different: it requires a bearer token.** It will not start without
-`MCP_AUTH_TOKEN` (at least 32 characters), and every request except `GET /healthz` must carry
-`Authorization: Bearer <token>`. stdio, which a client spawns on its own machine, needs none.
+**A local install needs no token.** stdio never reads one, and HTTP bound to loopback
+(`127.0.0.1`, `localhost`, `::1`) runs without one too, limited to a `localhost` `Host` header so a
+web page cannot reach it by DNS rebinding. **A server install needs one:** HTTP bound to any other
+address — the `0.0.0.0` default, a container, a public host — will not start without it. A token
+that is set is always enforced, on any bind.
 
 ```bash
-export MCP_AUTH_TOKEN="$(openssl rand -hex 32)"   # keep it; clients need the same value
-npm run start:http
+npm run start:http                                 # local: binds 127.0.0.1, no token needed
+
+export MCP_AUTH_TOKEN="$(openssl rand -hex 32)"    # server: keep it; clients need the same value
+lxagents-security serve --http --host 0.0.0.0
 ```
+
+The server form requires `MCP_AUTH_TOKEN` (at least 32 characters), and every request except
+`GET /healthz` must then carry `Authorization: Bearer <token>`.
 
 ### Security note — the HTTP transport
 
@@ -112,11 +119,11 @@ Every `.md` file here is a tool. `LICENSE.txt` is not, and is never served.
 | Transport | How |
 |---|---|
 | Local stdio | `command: node`, `args: ["src/index.js"]`, `cwd:` this checkout |
-| Local HTTP | `MCP_AUTH_TOKEN=<32+ chars> npm run start:http`, then `http://localhost:3000/mcp` with an `Authorization: Bearer <token>` header |
-| Remote | `https://<host>/mcp` with the same header — a `.mcp.json` `headers` entry, `claude mcp add --transport http … --header`, the Agent SDK or the Inspector can send it |
+| Local HTTP | `npm run start:http`, then `http://localhost:3000/mcp`. No token: it binds `127.0.0.1` |
+| Remote | `https://<host>/mcp` with an `Authorization: Bearer <token>` header — a `.mcp.json` `headers` entry, `claude mcp add --transport http … --header`, the Agent SDK or the Inspector can send it |
 
-The `/mcp` path is not optional on either HTTP form. Without the header every request except
-`GET /healthz` is a `401`. A client that can only authenticate through OAuth cannot use a
+The `/mcp` path is not optional on either HTTP form. On a server, without the header every
+request except `GET /healthz` is a `401`. A client that can only authenticate through OAuth cannot use a
 static token.
 
 ## Documentation
