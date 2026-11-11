@@ -6,44 +6,15 @@
  */
 
 import cluster from "node:cluster";
-import { availableParallelism } from "node:os";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { allowedHosts, createApp } from "./app.js";
+import { createApp } from "./app.js";
 import { MIN_TOKEN_LENGTH, tokenProblem } from "./auth.js";
+import { loadConfig } from "./config.js";
 import { SERVER_ID, createServer } from "./server.js";
 import { version } from "./version.js";
 
-const transportName = (process.env.MCP_TRANSPORT ?? "stdio").toLowerCase();
-const port = Number.parseInt(process.env.PORT ?? "3000", 10);
-
-/*
- * The bind address, named rather than implied.
- *
- * listen(port) with no host binds every interface, which is what a published port needs
- * and what a container gets — but it is a decision nobody made, so it is made here,
- * visibly. `HOST=127.0.0.1` is the way to take it back.
- */
-const host = process.env.HOST || "0.0.0.0";
-
-/**
- * How many HTTP workers to run.
- *
- * `MCP_CLUSTER_WORKERS` overrides the count. **A value of 1 means no forking at all** —
- * one process, one listener, the pre-cluster behaviour — which is what makes the
- * cluster change bisectable: the same code answers, with and without workers, and a
- * difference between them is a difference in the fork rather than in the transport.
- *
- * Unset, the count is the number of CPUs the process was actually given, not a
- * constant: a container with two CPUs gets two workers and a laptop does not get
- * eight.
- *
- * @returns {number}
- */
-function workerCount() {
-  const configured = Number.parseInt(process.env.MCP_CLUSTER_WORKERS ?? "", 10);
-  if (Number.isInteger(configured) && configured >= 0) return configured;
-  return availableParallelism();
-}
+const config = loadConfig();
+const { port, host } = config;
 
 /**
  * The worker: the process that actually answers.
@@ -59,7 +30,7 @@ function startWorker() {
   // suite that passes and a suite that fails on its second run with EADDRINUSE.
   process.on("disconnect", () => process.exit(0));
 
-  const server = createApp().listen(port, host, () => {
+  const server = createApp({ allowedHosts: config.allowedHosts }).listen(port, host, () => {
     const where = host === "0.0.0.0" ? "all interfaces" : host;
     process.stderr.write(
       `${SERVER_ID} ${version} serving over http on :${port}/mcp (${where})\n`
@@ -74,7 +45,7 @@ function startWorker() {
     // Said out loud, because the default is the unguarded one. Someone reading a
     // container's startup log is the only person who can act on it, and a control
     // that is off silently is worse than no control at all — it reads as present.
-    if (allowedHosts().length === 0) {
+    if (config.allowedHosts.length === 0) {
       process.stderr.write(
         `${SERVER_ID} ${version} MCP_ALLOWED_HOSTS is unset, so no Host header allow-list is applied.\n`
       );
@@ -142,7 +113,7 @@ function startPrimary() {
     return;
   }
 
-  const count = workerCount();
+  const count = config.workers;
 
   // Read by the respawn handler below, and set by the signal handler further down, so
   // it is declared before either can run rather than beside the one that reads it
@@ -232,7 +203,7 @@ function startPrimary() {
   process.on("SIGINT", () => shutdown("SIGINT"));
 }
 
-if (transportName === "http" || transportName === "streamable-http") {
+if (config.transport === "http" || config.transport === "streamable-http") {
   if (cluster.isPrimary) {
     startPrimary();
   } else {

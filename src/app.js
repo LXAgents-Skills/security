@@ -2,6 +2,7 @@ import express from "express";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { hostHeaderValidation } from "@modelcontextprotocol/sdk/server/middleware/hostHeaderValidation.js";
 import { configuredToken, requireBearerToken, tokenProblem } from "./auth.js";
+import { loadConfig } from "./config.js";
 import { rpcError } from "./http/rpc-error.js";
 import { SERVER_ID, createServer } from "./server.js";
 import { version } from "./version.js";
@@ -32,27 +33,6 @@ import { version } from "./version.js";
 export const BODY_LIMIT_BYTES = 4 * 1024 * 1024;
 
 /**
- * The `Host` header allow-list, when one is configured.
- *
- * Unset — or set to nothing but commas and spaces — means the check is skipped rather
- * than guessed at. `MCP_DNS_REBINDING_PROTECTION` used to default to `false`, which
- * made these allow-lists inert. A
- * wrong allow-list silently refusing every request is a worse failure than an absent
- * one, and this server serves public markdown either way, so the absence is reported
- * on startup rather than papered over with a default list.
- *
- * @returns {string[]}
- */
-export function allowedHosts() {
-  const raw = process.env.MCP_ALLOWED_HOSTS;
-  if (!raw) return [];
-  return raw
-    .split(",")
-    .map((host) => host.trim())
-    .filter(Boolean);
-}
-
-/**
  * Build the HTTP application.
  *
  * `token` is the bearer token every request but `/healthz` must carry. It defaults to
@@ -61,10 +41,16 @@ export function allowedHosts() {
  * forgetting an option. `src/index.js` checks first, in the primary, to report it once
  * instead of once per worker.
  *
- * @param {{ token?: string }} [options]
+ * `allowedHosts` is the `Host` header allow-list, from `MCP_ALLOWED_HOSTS` by default; an
+ * empty list applies no check.
+ *
+ * @param {{ token?: string, allowedHosts?: readonly string[] }} [options]
  * @returns {import("express").Express}
  */
-export function createApp({ token = configuredToken() } = {}) {
+export function createApp({
+  token = configuredToken(),
+  allowedHosts = loadConfig().allowedHosts,
+} = {}) {
   const problem = tokenProblem(token);
   if (problem) {
     throw new Error(`Refusing to build the HTTP app: ${problem}.`);
@@ -91,9 +77,8 @@ export function createApp({ token = configuredToken() } = {}) {
   // factory, and only when the host is loopback. This server binds `0.0.0.0` by
   // default, so without an explicit list there is no `Host` filtering in exactly the
   // deployment — a container, a shared host — where it would matter.
-  const hosts = allowedHosts();
-  if (hosts.length > 0) {
-    app.use(hostHeaderValidation(hosts));
+  if (allowedHosts.length > 0) {
+    app.use(hostHeaderValidation([...allowedHosts]));
   }
 
   // The token check, after the `Host` allow-list and ahead of the body parser and every
