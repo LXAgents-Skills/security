@@ -33,3 +33,12 @@ for the package-scope move is recorded as an open question below.
 ### Task 1 — plan/skills-migration
 
 Landed: this record and its row in `memory-index.md`.
+
+### Task 2 — chore/http-token-auth-integration
+
+Landed. The three branches were the pre-rebase copies of pull requests #8 to #10, whose
+rebased commits master already carried, so the merges add history and no content: after the
+third merge the tree equals `origin/release/2.0.0`. `feat/http-token-auth` conflicted in the
+`Dockerfile`, `wiki/environments/docker.md` and the token-auth record; `chore/http-token-auth-plan`
+conflicted in the record again. Every conflict was resolved to master's side, which is the
+released `2.0.0` state the owner asked to finish on. `release/2.0.0` merged cleanly.
