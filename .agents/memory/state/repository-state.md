@@ -18,14 +18,14 @@ Node.js 20+, ESM, no build step. One runtime dependency:
 
 ## What exists
 
-* **The set.** `content/` holds `SKILL.md`, the upstream Apache-2.0 `LICENSE.txt`, and
+* **The set.** `content/` holds `automation.md` (the routing hub), `SKILL.md`, the upstream Apache-2.0 `LICENSE.txt`, and
   ten reference guides under `references/`, named
   `<language>-<framework>-<stack>-security.md` across Python, JavaScript/TypeScript, and
   Go. Copied verbatim from the workspace `.agents/security/security-best-practices/`
   package, frontmatter intact.
 * **A derived tool surface.** `src/instructions/from-content.js` walks `content/` once at
-  import and builds one tool per `.md` file, named after its own filename — eleven
-  tools, `skill` plus the ten reference guides. `src/server.js` registers the frozen
+  import and builds one tool per `.md` file, named after its own filename — twelve
+  tools, `automation`, `skill` and the ten reference guides. `src/server.js` registers the frozen
   array as `INSTRUCTION_MODULES`, which is the whole surface. There is no hand-written tool in
   this repository.
 * **No argument anywhere.** Every tool returns one file verbatim with its frontmatter

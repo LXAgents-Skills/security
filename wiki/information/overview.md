@@ -16,7 +16,7 @@ identical to the same result produced through the other. `npm test` pins that ag
 
 ## The tools
 
-One tool per markdown file in `content/`, so 11 tools, named after the file each one
+One tool per markdown file in `content/`, so 12 tools, named after the file each one
 serves — the folder is dropped, the `.md` goes, the name is lowercased and `-` becomes
 `_`. `SKILL.md` is therefore `skill`, and
 `references/python-flask-web-server-security.md` is `python_flask_web_server_security`.
@@ -25,7 +25,8 @@ serves — the folder is dropped, the `.md` goes, the name is lowercased and `-`
 rather than the folder holding it; that is the cost of a caller being able to read the
 tool list and know what each tool is for.
 
-`skill` is the router. It names the language-and-framework workflow and points at the
+`automation` is the hub: it lists every other tool with the one condition that activates
+it, and it is the only tool read unprompted. `skill` names the language-and-framework workflow and points at the
 ten reference files under `references/`, one per language and framework, named
 `<language>-<framework>-<stack>-security.md`. The general file for a language comes
 before the framework-specific one, and the pair is written to be read in that order.

@@ -28,6 +28,7 @@ Dockerfile                    container image; MCP_TRANSPORT=http, node src/inde
 content/                      the published security set - the product
   SKILL.md                    the workflow, and the router into references/
   LICENSE.txt                 Apache-2.0, from the upstream package
+  automation.md               the hub: every other tool and the condition that activates it
   references/                 ten guides, <language>-<framework>-<stack>-security.md
 src/
   index.js                    entry point; reads the config and calls run()

@@ -27,3 +27,11 @@ task 3 waits on the answer.
 ### Task 1 — plan/automation-hub
 
 Landed: this record and its row in `memory-index.md`.
+
+### Task 2 — feat/automation-hub
+
+Landed. `content/automation.md` lists the other eleven tools, grouped by language, each with the
+condition that activates it. Its frontmatter `name` and `description` match the shared set's
+automation tool, with the em dash the owner's text had lost. A new test fails when the hub and the
+served names disagree in either direction or a tool is listed twice. The server's `instructions`
+text now says to start at `automation`. 64 tests pass.

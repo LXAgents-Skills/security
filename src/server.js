@@ -52,7 +52,7 @@ export function createServer({ version }) {
     { name: SERVER_ID, title: SERVER_TITLE, version },
     {
       instructions:
-        "The global security set for python, javascript/typescript, and go, served read-only. Every file in the set is its own tool: call the one whose name says what you need, such as skill, python_flask_web_server_security, or javascript_typescript_nextjs_web_server_security. Start at skill: it names the language and framework workflow and routes to the ten reference guides. Read the general guide for the language before the framework-specific one - they are written to be read in that order. No tool takes an argument.",
+        "The global security set for python, javascript/typescript, and go, served read-only. Every file in the set is its own tool. Start at automation: it lists every other tool and the one condition that activates each, so you call only the guides the request needs. skill names the language and framework workflow. Read the general guide for the language before the framework-specific one - they are written to be read in that order. No tool takes an argument.",
     }
   );
 
