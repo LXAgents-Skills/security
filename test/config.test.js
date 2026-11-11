@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
 import { availableParallelism } from "node:os";
 import { test } from "node:test";
-import { loadConfig } from "../src/config.js";
+import { isLoopback, loadConfig } from "../src/config.js";
 
 test("an empty environment gives the documented defaults", () => {
   assert.deepEqual({ ...loadConfig({}) }, {
     transport: "stdio",
     port: 3000,
     host: "0.0.0.0",
+    local: false,
     workers: availableParallelism(),
     allowedHosts: [],
   });
@@ -38,4 +39,15 @@ test("the configuration cannot be changed after it is read", () => {
   const config = loadConfig({});
   assert.ok(Object.isFrozen(config));
   assert.ok(Object.isFrozen(config.allowedHosts));
+});
+
+test("only a loopback bind counts as local", () => {
+  for (const host of ["127.0.0.1", "127.1.2.3", "localhost", "LOCALHOST", "::1", "[::1]"]) {
+    assert.equal(isLoopback(host), true, host);
+    assert.equal(loadConfig({ HOST: host }).local, true, host);
+  }
+  for (const host of ["0.0.0.0", "::", "", "10.0.0.5", "192.168.1.2", "example.com", "127.0.0.1.example.com"]) {
+    assert.equal(isLoopback(host), false, host);
+  }
+  assert.equal(loadConfig({}).local, false, "the default bind, every interface, is a server");
 });

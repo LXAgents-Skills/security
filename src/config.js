@@ -36,6 +36,25 @@ function workerCount(raw) {
 }
 
 /**
+ * Whether `host` is a loopback address, which only this machine can reach.
+ *
+ * `localhost`, any `127.x.x.x`, and `::1` with or without brackets. `0.0.0.0` and `::`
+ * mean every interface, so they are not loopback; neither is an empty value.
+ *
+ * @param {string} host
+ * @returns {boolean}
+ */
+export function isLoopback(host) {
+  const value = String(host ?? "").trim().toLowerCase();
+  return (
+    value === "localhost" ||
+    value === "::1" ||
+    value === "[::1]" ||
+    /^127(?:\.\d{1,3}){3}$/.test(value)
+  );
+}
+
+/**
  * The server's configuration, from `env`.
  *
  * * `transport` — `MCP_TRANSPORT`, lowercased; `stdio` when unset.
@@ -44,6 +63,8 @@ function workerCount(raw) {
  *   no host binds every interface, which is what a published port needs and what a
  *   container gets, but it is a decision nobody made, so it is made here, visibly.
  *   `HOST=127.0.0.1` is the way to take it back.
+ * * `local` — whether `host` is loopback. A local HTTP server needs no token; see
+ *   `src/http/auth.js`.
  * * `workers` — `MCP_CLUSTER_WORKERS`, see `workerCount`.
  * * `allowedHosts` — `MCP_ALLOWED_HOSTS`. Unset, or nothing but commas and spaces,
  *   means no `Host` check is applied rather than one guessed at: a wrong allow-list
@@ -54,10 +75,12 @@ function workerCount(raw) {
  * @param {NodeJS.ProcessEnv} [env]
  */
 export function loadConfig(env = process.env) {
+  const host = env.HOST || "0.0.0.0";
   return Object.freeze({
     transport: (env.MCP_TRANSPORT ?? "stdio").toLowerCase(),
     port: Number.parseInt(env.PORT ?? "3000", 10),
-    host: env.HOST || "0.0.0.0",
+    host,
+    local: isLoopback(host),
     workers: workerCount(env.MCP_CLUSTER_WORKERS),
     allowedHosts: Object.freeze(splitList(env.MCP_ALLOWED_HOSTS)),
   });

@@ -168,7 +168,8 @@ no caller, where a future reader could not tell whether it was load-bearing.
 
 ## Authentication
 
-**The HTTP transport requires a bearer token, and stdio does not.** No tool in this repository
+**HTTP on any bind but loopback requires a bearer token; stdio and loopback HTTP do not.** A
+loopback server without a token gets the SDK's localhost `Host` allow-list instead. No tool in this repository
 reads a credential, and none takes one as an argument; the token belongs to the transport.
 
 `src/http/auth.js` reads `MCP_AUTH_TOKEN` and `src/http/app.js` mounts its middleware after the `Host`

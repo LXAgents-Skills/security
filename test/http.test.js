@@ -1189,7 +1189,8 @@ test("HTTP refuses to start without a usable token", async () => {
   ];
 
   for (const [name, token, message] of cases) {
-    const { code, output } = await runToExit({ env: { MCP_AUTH_TOKEN: token } });
+    // Every interface, so this is a server. It exits before binding, so no port opens.
+    const { code, output } = await runToExit({ env: { MCP_AUTH_TOKEN: token, HOST: "0.0.0.0" } });
 
     assert.equal(code, 1, `${name}: it must exit 1, got ${code}\n${output}`);
     assert.match(output, message, name);
@@ -1202,7 +1203,7 @@ test("HTTP refuses to start without a usable token", async () => {
 test("the refusal to start is printed once however many workers, and is not a respawn loop", async () => {
   for (const workers of ["1", "3"]) {
     const { code, output } = await runToExit({
-      env: { MCP_AUTH_TOKEN: "", MCP_CLUSTER_WORKERS: workers },
+      env: { MCP_AUTH_TOKEN: "", MCP_CLUSTER_WORKERS: workers, HOST: "0.0.0.0" },
     });
 
     assert.equal(code, 1, output);
@@ -1220,6 +1221,9 @@ test("createApp cannot be built without a usable token", () => {
     assert.throws(() => createApp({ token: "short" }), /must be at least 32/);
     assert.throws(() => createApp({ token: "" }), /is not set/);
 
+    assert.equal(typeof createApp({ token: "", local: true }).listen, "function", "local needs no token");
+    assert.throws(() => createApp({ token: "short", local: true }), /must be at least 32/);
+
     process.env.MCP_AUTH_TOKEN = TEST_TOKEN;
     assert.equal(typeof createApp().listen, "function", "the environment supplies the default");
     assert.equal(typeof createApp({ token: "z".repeat(40) }).listen, "function");
@@ -1231,6 +1235,12 @@ test("createApp cannot be built without a usable token", () => {
 
 test("tokenProblem and configuredToken", () => {
   assert.equal(tokenProblem(""), "MCP_AUTH_TOKEN is not set");
+  assert.equal(tokenProblem("", { required: false }), null, "no token is fine when not required");
+  assert.match(
+    tokenProblem("short", { required: false }),
+    /must be at least 32/,
+    "a token that is set is checked even when none is required"
+  );
   assert.match(tokenProblem("k".repeat(31)), /is 31 characters, and it must be at least 32/);
   assert.equal(tokenProblem("k".repeat(32)), null);
   assert.equal(tokenProblem(TEST_TOKEN), null);
@@ -1264,4 +1274,58 @@ test("stdio never reads the token, so even an unusable one does not stop it", as
   } finally {
     await client.close();
   }
+});
+
+test("HTTP bound to loopback starts and serves without a token", async () => {
+  for (const workers of ["1", "2"]) {
+    await withServer(
+      { env: { MCP_AUTH_TOKEN: "", MCP_CLUSTER_WORKERS: workers } },
+      async ({ url, output, waitForCount }) => {
+        assert.ok(await waitForCount("serving over http", Number(workers)), output());
+        assert.match(output(), /bound to loopback, so no bearer token is required; Host is limited to localhost/);
+        assert.doesNotMatch(output(), /bearer token required on every route/);
+        assert.doesNotMatch(output(), /MCP_ALLOWED_HOSTS is unset/);
+
+        const client = new Client({ name: "local-no-token", version: "0.0.0" });
+        await client.connect(new StreamableHTTPClientTransport(new URL(`${url}/mcp`)));
+        try {
+          const { tools } = await client.listTools();
+          assert.equal(tools.length, listTools().length);
+          const text = textOf(await client.callTool({ name: `${ID_PREFIX}_automation`, arguments: {} }));
+          assert.ok(text.length > 0);
+        } finally {
+          await client.close();
+        }
+      }
+    );
+  }
+});
+
+test("a local server without a token only answers to a localhost Host header", async () => {
+  // With no token, the Host check is what keeps a rebinding web page out.
+  await withServer({ env: { MCP_AUTH_TOKEN: "" } }, async ({ url }) => {
+    for (const host of ["localhost", "127.0.0.1"]) {
+      const port = new URL(url).port;
+      assert.equal((await requestWithHost({ url, host: `${host}:${port}` })).status, 200, host);
+    }
+    for (const host of ["attacker.example", "attacker.example:80"]) {
+      assert.equal((await requestWithHost({ url, host })).status, 403, host);
+    }
+  });
+});
+
+test("a local server still enforces a token that is set", async () => {
+  // The suite's default server is loopback with a token: the token tests above already
+  // run there. This pins the one line that says which control is on.
+  await withServer({}, async ({ output, waitForCount }) => {
+    assert.ok(await waitForCount("serving over http", 1));
+    assert.match(output(), /bearer token required on every route except GET \/healthz/);
+    assert.doesNotMatch(output(), /no bearer token is required/);
+  });
+});
+
+test("a local server refuses a token that is set but too short", async () => {
+  const { code, output } = await runToExit({ env: { MCP_AUTH_TOKEN: "short-secret" } });
+  assert.equal(code, 1, output);
+  assert.match(output, /MCP_AUTH_TOKEN is 12 characters/);
 });

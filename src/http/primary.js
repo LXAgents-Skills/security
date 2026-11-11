@@ -1,7 +1,7 @@
 import cluster from "node:cluster";
 import { SERVER_ID } from "../server.js";
 import { version } from "../version.js";
-import { MIN_TOKEN_LENGTH, tokenProblem } from "./auth.js";
+import { MIN_TOKEN_LENGTH, configuredToken, tokenProblem } from "./auth.js";
 import { startWorker } from "./worker.js";
 
 /**
@@ -14,20 +14,20 @@ import { startWorker } from "./worker.js";
 export function startPrimary(config) {
   const { port } = config;
 
-  // Fail closed, before anything is forked. HTTP without a token is an open door on a
-  // network, and the only thing that can be done about it is not to start. Checked here
+  // Fail closed, before anything is forked. HTTP without a token on anything but loopback
+  // is an open door on a network, and the only thing that can be done about it is not to start. Checked here
   // as well as in `createApp` because here it is reported once: left to the workers, a
   // missing token would be the same line printed by each of them and then a respawn loop
   // through the crash limit.
   //
   // `exitCode` and a return, not `process.exit()`: nothing is listening yet, so the
   // process ends on its own once the line is written, and the line is never cut off.
-  const problem = tokenProblem();
+  const problem = tokenProblem(configuredToken(), { required: !config.local });
   if (problem) {
     process.stderr.write(
       `${SERVER_ID} ${version} will not start the HTTP transport: ${problem}. ` +
         `Set MCP_AUTH_TOKEN to a secret of at least ${MIN_TOKEN_LENGTH} characters, for example ` +
-        "the output of: openssl rand -hex 32. stdio needs no token.\n"
+        "the output of: openssl rand -hex 32. stdio, and HTTP bound to 127.0.0.1, need no token.\n"
     );
     process.exitCode = 1;
     return;

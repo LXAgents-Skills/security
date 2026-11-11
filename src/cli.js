@@ -10,6 +10,7 @@ Usage
 
 Commands
   serve            Run as a Skill MCP server
+                   [--stdio | --http] [--port N] [--host ADDR]
   tools            List the tools this server exposes
 
 Options
@@ -18,7 +19,8 @@ Options
 
 Environment
   MCP_TRANSPORT    stdio (default) or http
-  MCP_AUTH_TOKEN   bearer token, 32+ characters; required for http, unused by stdio
+  MCP_AUTH_TOKEN   bearer token, 32+ characters; required for http unless HOST is
+                   loopback (127.0.0.1, localhost, ::1); unused by stdio
   PORT             HTTP port, default 3000
   HOST             HTTP interface, default 0.0.0.0
   MCP_ALLOWED_HOSTS  comma-separated Host allow-list; unset means none is applied
@@ -41,6 +43,9 @@ if (command === "-v" || command === "--version") {
 
   const portFlag = rest.indexOf("--port");
   if (portFlag !== -1 && rest[portFlag + 1]) overrides.PORT = rest[portFlag + 1];
+
+  const hostFlag = rest.indexOf("--host");
+  if (hostFlag !== -1 && rest[hostFlag + 1]) overrides.HOST = rest[hostFlag + 1];
 
   const [{ loadConfig }, { run }] = await Promise.all([import("./config.js"), import("./run.js")]);
   await run(loadConfig({ ...process.env, ...overrides }));

@@ -62,7 +62,7 @@ wiki/                         human documentation
 | `npm test` | `node --test`. The whole suite; there is no watch mode. |
 | `npm run cli -- tools` | Lists registered tools through the CLI surface. |
 | `npm start` | Serves over stdio. |
-| `MCP_AUTH_TOKEN=<32+ chars> npm run start:http` | Serves over streamable HTTP on `PORT` (default 3000). **No token, no start.** |
+| `npm run start:http` | Serves over streamable HTTP on `127.0.0.1:PORT` (default 3000). Loopback, so no token is needed. Off loopback, **no token, no start.** |
 | `npm run inspect` | MCP Inspector against the stdio server. |
 
 ## Environment variables
@@ -74,7 +74,7 @@ wiki/                         human documentation
 | `HOST` | `src/config.js` | Interface the HTTP transport binds, default `0.0.0.0` — every IPv4 interface. |
 | `MCP_ALLOWED_HOSTS` | `src/config.js` | Comma-separated `Host` allow-list for the HTTP transport. **Unset means none is applied**; the server says so on startup. |
 | `MCP_CLUSTER_WORKERS` | `src/config.js` | HTTP worker count, default one per CPU. **`1` forks nothing.** stdio never forks. |
-| `MCP_AUTH_TOKEN` | `src/http/auth.js`, checked in `src/http/primary.js` | **A secret.** The bearer token every HTTP request except `GET /healthz` must carry; at least 32 characters; HTTP will not start without it; stdio never reads it. |
+| `MCP_AUTH_TOKEN` | `src/http/auth.js`, checked in `src/http/primary.js` | **A secret.** The bearer token every HTTP request except `GET /healthz` must carry; at least 32 characters; HTTP off loopback will not start without it; optional on loopback, enforced if set; stdio never reads it. |
 
 There is no `API_KEY`: nothing here reaches an external service, and no tool reads a credential.
 `MCP_ALLOWED_HOSTS` is a filter, not a credential — it decides which `Host` values are answered,
@@ -82,7 +82,8 @@ not who is asking; `MCP_AUTH_TOKEN` is what decides that. **HTTP tests need the 
 harness in `test/http.test.js` hands every child the variable and the SDK client the matching
 header, so a test that spawns the server any other way, or fetches `/mcp` raw, must do the same
 or it will read a `401` as a failure of the thing it is testing. Blank it
-(`MCP_AUTH_TOKEN: ""`) to test the refusal to start.
+(`MCP_AUTH_TOKEN: ""`) with `HOST: "0.0.0.0"` to test the refusal to start; blank on the
+suite's loopback bind is the local, token-free case.
 
 ## The two surfaces
 

@@ -1,6 +1,7 @@
 import { SERVER_ID } from "../server.js";
 import { version } from "../version.js";
 import { createApp } from "./app.js";
+import { configuredToken } from "./auth.js";
 
 /**
  * The HTTP worker: the process that actually answers.
@@ -12,28 +13,35 @@ import { createApp } from "./app.js";
  * session logic is written, because the scheduler already has the information
  * (which connection is next) that a sticky-session scheme would have to reconstruct.
  */
-export function startWorker({ port, host, allowedHosts }) {
+export function startWorker({ port, host, allowedHosts, local }) {
   // A worker whose primary is gone holds the port for whoever starts next. The test
   // harness kills the child process directly, so this is the difference between a
   // suite that passes and a suite that fails on its second run with EADDRINUSE.
   process.on("disconnect", () => process.exit(0));
 
-  const server = createApp({ allowedHosts }).listen(port, host, () => {
+  const tokenSet = configuredToken() !== "";
+  const server = createApp({ allowedHosts, local }).listen(port, host, () => {
     const where = host === "0.0.0.0" ? "all interfaces" : host;
     process.stderr.write(
       `${SERVER_ID} ${version} serving over http on :${port}/mcp (${where})\n`
     );
 
-    // The token is required for the process to be here at all, so this line is a
-    // statement of fact and not a warning. It never carries the value.
-    process.stderr.write(
-      `${SERVER_ID} ${version} bearer token required on every route except GET /healthz.\n`
-    );
+    // A statement of which control is on. Neither line ever carries the token.
+    if (tokenSet) {
+      process.stderr.write(
+        `${SERVER_ID} ${version} bearer token required on every route except GET /healthz.\n`
+      );
+    } else {
+      process.stderr.write(
+        `${SERVER_ID} ${version} bound to loopback, so no bearer token is required; ` +
+          `Host is limited to ${allowedHosts.length > 0 ? "MCP_ALLOWED_HOSTS" : "localhost"}.\n`
+      );
+    }
 
     // Said out loud, because the default is the unguarded one. Someone reading a
     // container's startup log is the only person who can act on it, and a control
     // that is off silently is worse than no control at all — it reads as present.
-    if (allowedHosts.length === 0) {
+    if (allowedHosts.length === 0 && tokenSet) {
       process.stderr.write(
         `${SERVER_ID} ${version} MCP_ALLOWED_HOSTS is unset, so no Host header allow-list is applied.\n`
       );
