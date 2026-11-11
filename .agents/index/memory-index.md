@@ -36,6 +36,7 @@ current request.
 | [`../memory/tasks/http-token-auth.md`](../memory/tasks/http-token-auth.md) | Requiring a bearer token on the HTTP transport while stdio stays open, and the breaking release that follows. |
 <<<<<<< HEAD
 | [`../memory/tasks/skills-migration.md`](../memory/tasks/skills-migration.md) | Merging the stale token-auth branches into master, then moving to `LXAgents-Skills` and from tools to instructions in the internal vocabulary. No version change. |
+| [`../memory/tasks/code-optimization.md`](../memory/tasks/code-optimization.md) | The CLI help gap, one JSON-RPC error envelope, one config reader, and `src/index.js` split by responsibility. No version change. |
 =======
 >>>>>>> origin/chore/http-token-auth-plan
 
