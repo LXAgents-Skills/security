@@ -88,3 +88,11 @@ into `dist/`, the new scripts, the two-stage image, and the registration path
 overturned. `repository-map.md`, `tool-authoring.md` and `repository-state.md` name the `.ts`
 files. Release logs and older task records keep their `.js` names, because they describe what
 was true then.
+
+### Task 5 - release/2.0.4
+
+Landed. The version is `2.0.4`, a patch bump, which is the owner's standing choice. The
+changelog in `wiki/logs/2/0/4/` says the one thing clients must do: point a local
+registration at `dist/index.js`. It also has a row in `logs-index.md`, and the documented
+image tag and startup lines are now 2.0.4. Final check on this branch: a clean `npm run build`
+and `npm run typecheck`, 69 of 69 tests pass, and `npm audit` reports 0 vulnerabilities.
