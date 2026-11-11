@@ -47,3 +47,8 @@ becomes `js_ts` for Next.js, React and Vue. The longest ID is now 64 characters
 The derivation test now checks the prefix, the underscores-only rule, the 64-character cap and
 the four overrides. `automation.md`, the server instructions, the README, the overview and the
 tool-authoring rule all use the new IDs. 64 tests pass.
+
+### Task 4 — release/2.0.2
+
+Landed. The version is `2.0.2`, a patch, by the owner's standing choice; the changelog says plainly
+that callers using the old names break and gives the full rename table. No git tag.
