@@ -38,6 +38,7 @@ current request.
 | [`../memory/tasks/skills-migration.md`](../memory/tasks/skills-migration.md) | Merging the stale token-auth branches into master, then moving to `LXAgents-Skills` and from tools to instructions in the internal vocabulary. No version change. |
 | [`../memory/tasks/code-optimization.md`](../memory/tasks/code-optimization.md) | The CLI help gap, one JSON-RPC error envelope, one config reader, and `src/index.js` split by responsibility. No version change. |
 | [`../memory/tasks/automation-hub.md`](../memory/tasks/automation-hub.md) | `content/automation.md` as the routing hub over every served file, and tool IDs prefixed with `lxagents_skills_security_`. |
+| [`../memory/tasks/local-http-token.md`](../memory/tasks/local-http-token.md) | `MCP_AUTH_TOKEN` required only when HTTP is reachable from a network; a loopback bind runs without one, behind the localhost `Host` allow-list. |
 =======
 >>>>>>> origin/chore/http-token-auth-plan
 
