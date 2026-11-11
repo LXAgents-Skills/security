@@ -1,4 +1,4 @@
-import express from "express";
+import express, { type Express, type NextFunction, type Request, type Response } from "express";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import {
   hostHeaderValidation,
@@ -14,15 +14,15 @@ import { version } from "../version.js";
  * The HTTP transport, as an application.
  *
  * This module builds an express app and returns it. **It does not listen** —
- * `src/http/worker.js` owns the port. A file that both builds the app and binds a port
+ * `src/http/worker.ts` owns the port. A file that both builds the app and binds a port
  * cannot be reasoned about, or tested, without binding one.
  *
  * The surface is deliberately narrow: `POST /mcp` and `GET /healthz`, a JSON-RPC 404
  * for everything else, and a 405 for any other method on `/mcp`. **Everything except
- * `GET /healthz` needs the bearer token** - see `src/http/auth.js` for why, and `createApp`
+ * `GET /healthz` needs the bearer token** - see `src/http/auth.ts` for why, and `createApp`
  * for where. Nothing here is a
  * second source of truth about the tool list — `createServer()` is the same factory
- * `src/stdio.js` uses, and it returns a fresh `McpServer` per call, so each
+ * `src/stdio.ts` uses, and it returns a fresh `McpServer` per call, so each
  * request gets its own. Sharing one across requests would be a real bug: `McpServer`
  * holds per-connection state.
  */
@@ -33,7 +33,20 @@ import { version } from "../version.js";
  * The previous implementation enforced this by counting chunks as they arrived and
  * throwing past the limit. The same number, declared rather than counted.
  */
-export const BODY_LIMIT_BYTES = 4 * 1024 * 1024;
+export const BODY_LIMIT_BYTES: number = 4 * 1024 * 1024;
+
+/** What `createApp` may be told; every field has a safe default. */
+export interface AppOptions {
+  token?: string;
+  allowedHosts?: readonly string[];
+  local?: boolean;
+}
+
+/** The shape express gives a body-parser failure: `type` names which one. */
+interface ParserError {
+  type?: string;
+  message?: string;
+}
 
 /**
  * Build the HTTP application.
@@ -41,7 +54,7 @@ export const BODY_LIMIT_BYTES = 4 * 1024 * 1024;
  * `token` is the bearer token every request but `/healthz` must carry. It defaults to
  * `MCP_AUTH_TOKEN`, read now. **There is no way to build this app without one**: a
  * missing or too-short token throws, so an unauthenticated HTTP server cannot come from
- * forgetting an option. `src/http/primary.js` checks first, to report it once
+ * forgetting an option. `src/http/primary.ts` checks first, to report it once
  * instead of once per worker.
  *
  * `allowedHosts` is the `Host` header allow-list, from `MCP_ALLOWED_HOSTS` by default; an
@@ -51,15 +64,12 @@ export const BODY_LIMIT_BYTES = 4 * 1024 * 1024;
  * built without the token check, and with the localhost `Host` allow-list unless
  * `allowedHosts` names one. It defaults to `false`, so leaving it out can never turn the
  * check off.
- *
- * @param {{ token?: string, allowedHosts?: readonly string[], local?: boolean }} [options]
- * @returns {import("express").Express}
  */
 export function createApp({
   token = configuredToken(),
   allowedHosts = loadConfig().allowedHosts,
   local = false,
-} = {}) {
+}: AppOptions = {}): Express {
   const problem = tokenProblem(token, { required: !local });
   if (problem) {
     throw new Error(`Refusing to build the HTTP app: ${problem}.`);
@@ -181,18 +191,19 @@ export function createApp({
    * Registered last, and declared with four arguments, because that is how express
    * recognises an error handler rather than ordinary middleware.
    */
-  app.use((error, _req, res, next) => {
+  app.use((error: unknown, _req: Request, res: Response, next: NextFunction) => {
     if (res.headersSent) {
       next(error);
       return;
     }
 
-    if (error?.type === "entity.too.large" || error?.type === "entity.parse.failed") {
+    const parserError = error as ParserError | null | undefined;
+    if (parserError?.type === "entity.too.large" || parserError?.type === "entity.parse.failed") {
       rpcError(res, 400, -32700, "Parse error: request body is not valid JSON");
       return;
     }
 
-    rpcError(res, 500, -32603, String(error?.message ?? error));
+    rpcError(res, 500, -32603, String(parserError?.message ?? error));
   });
 
   return app;

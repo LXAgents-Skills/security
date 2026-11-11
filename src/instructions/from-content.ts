@@ -1,6 +1,19 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { CONTENT_DIR } from "../version.js";
+
+/** What a tool is called and how a client routes to it. */
+export interface InstructionConfig {
+  name: string;
+  description: string;
+}
+
+/** One served file: its tool declaration and the handler that returns it whole. */
+export interface InstructionModule {
+  config: InstructionConfig;
+  handler: () => Promise<CallToolResult>;
+}
 
 /**
  * The prefix every tool ID carries: `{org_name}_{repo_name}`, underscores only.
@@ -9,7 +22,7 @@ import { CONTENT_DIR } from "../version.js";
  * as `skill` or `automation` can collide with another server's. The prefix makes every
  * ID unique to this repository.
  */
-export const ID_PREFIX = "lxagents_skills_security";
+export const ID_PREFIX: string = "lxagents_skills_security";
 
 /**
  * The longest ID this repository publishes.
@@ -18,7 +31,7 @@ export const ID_PREFIX = "lxagents_skills_security";
  * cap a tool name at 64, so every ID here is kept to 64, and a base name that would push
  * an ID past it is shortened in `NAME_OVERRIDES`. The test suite holds every ID to this.
  */
-export const MAX_PUBLISHED_ID_LENGTH = 64;
+export const MAX_PUBLISHED_ID_LENGTH: number = 64;
 
 /**
  * IDs that do not survive mechanical derivation, keyed by set-relative path.
@@ -32,7 +45,7 @@ export const MAX_PUBLISHED_ID_LENGTH = 64;
  * `AGENTS.md` would derive to `agents`, which says nothing about which document it is;
  * no such file is in the set today, and the override is kept for when one is.
  */
-const NAME_OVERRIDES = {
+const NAME_OVERRIDES: Readonly<Record<string, string>> = {
   "AGENTS.md": `${ID_PREFIX}_agents_entry_point`,
   "references/javascript-general-web-frontend-security.md": `${ID_PREFIX}_js_general_web_frontend_security`,
   "references/javascript-typescript-nextjs-web-server-security.md": `${ID_PREFIX}_js_ts_nextjs_web_server_security`,
@@ -52,17 +65,17 @@ const TOOL_NAME = /^[a-z][a-z0-9_]{0,127}$/;
  * `buildContentInstructions` treats as a startup error rather than letting the second
  * file silently shadow the first.
  */
-function instructionNameFor(relativePath) {
+function instructionNameFor(relativePath: string): string {
   const override = NAME_OVERRIDES[relativePath];
   if (override) return override;
 
-  const base = relativePath.split("/").pop().replace(/\.md$/, "").toLowerCase().replace(/-/g, "_");
+  const base = (relativePath.split("/").pop() ?? relativePath).replace(/\.md$/, "").toLowerCase().replace(/-/g, "_");
   return `${ID_PREFIX}_${base}`;
 }
 
 /** Every `.md` under the set root, as set-relative forward-slash paths, sorted. */
-function markdownFiles(dir = CONTENT_DIR, base = CONTENT_DIR) {
-  const found = [];
+function markdownFiles(dir: string = CONTENT_DIR, base: string = CONTENT_DIR): string[] {
+  const found: string[] = [];
 
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name);
@@ -89,14 +102,14 @@ function markdownFiles(dir = CONTENT_DIR, base = CONTENT_DIR) {
  * every length; with `\S` in front, handing a space back can never turn a failure
  * into a match, so a non-matching line costs one pass instead of one pass per space.
  */
-function parseFrontmatter(text) {
+function parseFrontmatter(text: string): Record<string, string> | null {
   const block = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-  if (!block) return null;
+  if (block?.[1] === undefined) return null;
 
-  const fields = {};
+  const fields: Record<string, string> = {};
   for (const line of block[1].split(/\r?\n/)) {
     const field = line.match(/^([A-Za-z_][A-Za-z0-9_]*):[ \t]*(\S.*|)$/);
-    if (field) fields[field[1]] = field[2].trim();
+    if (field?.[1] !== undefined) fields[field[1]] = (field[2] ?? "").trim();
   }
   return fields;
 }
@@ -111,13 +124,11 @@ function parseFrontmatter(text) {
  *
  * The file is served whole, frontmatter included, byte-identical to what the set
  * holds — the frontmatter is part of the published text, not metadata to strip.
- *
- * @returns {{ tools: {config: object, handler: Function}[], files: Map<string, string> }}
  */
-function buildContentInstructions() {
-  const tools = [];
-  const files = new Map();
-  const claimed = new Map();
+function buildContentInstructions(): { tools: InstructionModule[]; files: Map<string, string> } {
+  const tools: InstructionModule[] = [];
+  const files = new Map<string, string>();
+  const claimed = new Map<string, string>();
 
   for (const path of markdownFiles()) {
     const name = instructionNameFor(path);
@@ -159,9 +170,9 @@ function buildContentInstructions() {
 
 const { tools, files } = buildContentInstructions();
 
-export const CONTENT_INSTRUCTIONS = Object.freeze(tools);
+export const CONTENT_INSTRUCTIONS: readonly InstructionModule[] = Object.freeze(tools);
 
 /** Tool name -> the set-relative file it serves. The test suite pins both directions. */
-export const INSTRUCTION_FILES = files;
+export const INSTRUCTION_FILES: ReadonlyMap<string, string> = files;
 
 export default CONTENT_INSTRUCTIONS;

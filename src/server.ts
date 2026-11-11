@@ -13,6 +13,12 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { CONTENT_INSTRUCTIONS } from "./instructions/from-content.js";
 
+/** A registered tool, as the CLI and `tools/list` describe it. */
+export interface ToolSummary {
+  name: string;
+  description: string;
+}
+
 export const SERVER_ID = "lxagents-security";
 export const SERVER_TITLE = "LXAgents Security";
 
@@ -33,21 +39,16 @@ const INSTRUCTION_MODULES = Object.freeze(CONTENT_INSTRUCTIONS);
  *
  * The CLI prints this rather than keeping a list of its own, so the two
  * surfaces cannot drift apart.
- *
- * @returns {{ name: string, description: string }[]}
  */
-export function listTools() {
+export function listTools(): ToolSummary[] {
   return INSTRUCTION_MODULES.map(({ config }) => ({
     name: config.name,
     description: config.description,
   }));
 }
 
-/**
- * @param {{ version: string }} options
- * @returns {McpServer}
- */
-export function createServer({ version }) {
+/** A fresh `McpServer` carrying the whole surface, for one connection. */
+export function createServer({ version }: { version: string }): McpServer {
   const server = new McpServer(
     { name: SERVER_ID, title: SERVER_TITLE, version },
     {

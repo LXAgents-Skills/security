@@ -9,7 +9,7 @@ import { version } from "./version.js";
  * would corrupt the stream. Nothing on this path reads `MCP_AUTH_TOKEN`: whoever can
  * use the pipe already runs the process.
  */
-export async function startStdio() {
+export async function startStdio(): Promise<void> {
   const server = createServer({ version });
   await server.connect(new StdioServerTransport());
   process.stderr.write(`${SERVER_ID} ${version} serving over stdio\n`);

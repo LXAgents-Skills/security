@@ -48,3 +48,31 @@ Landed. `@modelcontextprotocol/sdk` 1.30.0 to 1.32.2, `express` 5.2.1 to 5.3.0, 
 `@types/express` 5.0.6. `npm audit` reported 9 vulnerabilities on master (1 critical, 4 high,
 4 moderate), all transitive (`fast-uri`, `hono`, `ip-address` among them); the updates and
 `npm audit fix` leave 0. `npm outdated` is empty. Still JavaScript: 69 tests pass unchanged.
+
+### Task 3 - refactor/typescript
+
+Landed. `tsconfig.json` targets ES2022 with `NodeNext` module and resolution, `strict`, `src`
+to `dist`, and `types: ["node"]` (TypeScript 7 no longer loads every `@types` package by
+default). `test/tsconfig.json` extends it with `noEmit` so `npm run typecheck` checks the tests
+too. Every file in `src/` and `test/` is `.ts`; imports keep their `.js` extension, as
+`NodeNext` requires. New types: `Config` (`config.ts`), `ToolSummary` (`server.ts`),
+`InstructionConfig` and `InstructionModule` (`from-content.ts`), `AppOptions` (`app.ts`). No
+logic changed, and no `any` was written.
+
+`package.json`: `main` and both `bin` entries point at `dist/`, `files` ships `dist` rather
+than `src`, and the scripts are `build` and `prepare` (`tsc`), `typecheck`, `start`,
+`start:http`, `cli` and `inspect` on `dist/`, `pretest` (build), and
+`test` = `node --import tsx --test test/*.test.ts`. The tests import the source through `tsx`
+and spawn the compiled `dist/index.js` and `dist/cli.js`, so the stdio and HTTP tests exercise
+what a clone actually runs. The CLI help test now scans `src/**/*.ts` for `env.` reads.
+`dist/` is in `.gitignore` and `.dockerignore`.
+
+The `Dockerfile` has two stages: `build` runs `npm ci --ignore-scripts` and `npm run build`; the
+runtime stage installs `--omit=dev`, copies `dist/` and `content/`, and runs
+`node dist/index.js`.
+
+Verified: typecheck clean; 69 of 69 tests pass; `tools` output is byte-identical to master
+(12 tools); a fresh `git clone` and `npm install` produces `dist/` through `prepare` and
+serves 12 tools; the runtime stage simulated outside Docker (production install, no compiler)
+answers `/healthz` and `tools/list` over stdio. `docker build` itself could not be run in the
+session's sandbox: its build containers have no route to the npm registry.
