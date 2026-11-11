@@ -1,11 +1,11 @@
 # Local Setup
 
-`@lxagents-mcp/security` is **dual-purpose**. The same code is reachable two ways:
+`@lxagents-skills/security` is **dual-purpose**. The same code is reachable two ways:
 
 | Mode | What it is | Who uses it |
 |---|---|---|
 | **CLI mode** | A terminal command | A person running it by hand or from a script |
-| **Server mode** | An MCP server over stdio or streamable HTTP | An MCP client, an editor, an agent, or a connector |
+| **Server mode** | A Skill MCP server over stdio or streamable HTTP | An MCP client, an editor, an agent, or a connector |
 
 Both modes share one implementation, so a result produced in one is identical to the
 same result produced in the other.
@@ -47,7 +47,7 @@ npm install
 npm link
 
 # Or globally, from the registry
-npm install -g @lxagents-mcp/security
+npm install -g @lxagents-skills/security
 ```
 
 Without installing anything:
@@ -77,7 +77,7 @@ skill                                              Perform language and framewor
 One line per file in `content/`, named after that file. Eleven lines today; one more
 whichever guide is added to the set next.
 
-The list comes from `listTools()` in `src/server.js` — the same list the MCP server
+The list comes from `listTools()` in `src/server.js` — the same list the Skill MCP server
 registers — so the two surfaces cannot disagree.
 
 ### Exit codes

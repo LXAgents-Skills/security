@@ -7,7 +7,7 @@ description: Current known state of lxagents-security - the derived per-file too
 
 ## What this repository is right now
 
-`lxagents-security` is a working dual-purpose MCP server and CLI at version `2.0.0`. It
+`lxagents-security` is a working dual-purpose Skill MCP server and CLI at version `2.0.0`. It
 serves the **global security set** read-only. It is no longer a template: `PROMPT.md` and
 `template-mode.md` are gone, and the tool surface is derived from the set.
 
@@ -23,10 +23,10 @@ Node.js 20+, ESM, no build step. One runtime dependency:
   `<language>-<framework>-<stack>-security.md` across Python, JavaScript/TypeScript, and
   Go. Copied verbatim from the workspace `.agents/security/security-best-practices/`
   package, frontmatter intact.
-* **A derived tool surface.** `src/tools/from-content.js` walks `content/` once at
+* **A derived tool surface.** `src/instructions/from-content.js` walks `content/` once at
   import and builds one tool per `.md` file, named after its own filename — eleven
   tools, `skill` plus the ten reference guides. `src/server.js` registers the frozen
-  array as `TOOL_MODULES`, which is the whole surface. There is no hand-written tool in
+  array as `INSTRUCTION_MODULES`, which is the whole surface. There is no hand-written tool in
   this repository.
 * **No argument anywhere.** Every tool returns one file verbatim with its frontmatter
   intact. A call is a map lookup over text read once at boot: no filesystem I/O on the
@@ -75,7 +75,7 @@ Node.js 20+, ESM, no build step. One runtime dependency:
 
 ## Shared set
 
-Resolved through the `lxagents-agents-base` MCP connector. Nothing shared is vendored
+Resolved through the `lxagents-agents-base` Skill MCP connector. Nothing shared is vendored
 here, and there are no overrides - see
 [`../../index/root-index.md`](../../index/root-index.md).
 

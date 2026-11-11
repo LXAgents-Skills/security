@@ -9,14 +9,14 @@ Read this before touching anything in `lxagents-security`.
 
 ## What this repository is
 
-An MCP server and a CLI over one implementation, serving the **global security
+A Skill MCP server and a CLI over one implementation, serving the **global security
 instruction set** read-only — the language and framework guides for Python,
 JavaScript/TypeScript, and Go. Node.js 20+, ESM (`"type": "module"`), **no build
 step** - the published package ships `src/` and Node runs it directly.
 
-* Remote: `LXAgents-MCP/security`, default branch `master`.
-* Package: `@lxagents-mcp/security`.
-* Bins: `lxagents-security` (CLI) and `lxagents-security-server` (MCP server).
+* Remote: `LXAgents-Skills/security`, default branch `master`.
+* Package: `@lxagents-skills/security`.
+* Bins: `lxagents-security` (CLI) and `lxagents-security-server` (Skill MCP server).
 
 ## Layout
 
@@ -77,7 +77,7 @@ or it will read a `401` as a failure of the thing it is testing. Blank it
 
 ## The two surfaces
 
-The tool surface is derived, not declared. `src/tools/from-content.js` walks `content/`
+The tool surface is derived, not declared. `src/instructions/from-content.js` walks `content/`
 once at import and builds one tool per `.md` file, naming each after its own filename.
 `src/server.js` registers that array and exports `listTools()`; `src/cli.js` imports
 `listTools()` from it rather than keeping its own, and `test/server.test.js` asserts that
@@ -92,7 +92,7 @@ Eleven tools today. None of them takes an argument.
 * **stdout is the protocol.** On stdio, a `console.log` anywhere on the server path
   corrupts the JSON-RPC stream. Log to stderr. Only CLI commands print.
 * **Do not hand-write a tool module.** Adding a `.md` file to `content/` *is* adding a
-  tool. A module under `src/tools/` beside `from-content.js` puts two tools on the
+  tool. A module under `src/instructions/` beside `from-content.js` puts two tools on the
   surface for one file and is invisible to the derivation. See
   [`../../rules/tool-authoring.md`](../../rules/tool-authoring.md).
 * **A guide without a `description:` in its frontmatter will not boot.** That is the

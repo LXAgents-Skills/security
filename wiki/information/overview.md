@@ -1,7 +1,7 @@
 # Overview
 
-`@lxagents-mcp/security` is a **dual-purpose** package: the same implementation is
-reachable as a terminal command and as an MCP server. It serves one thing — the global
+`@lxagents-skills/security` is a **dual-purpose** package: the same implementation is
+reachable as a terminal command and as a Skill MCP server. It serves one thing — the global
 security instruction set — and it serves it read-only.
 
 ## The two surfaces
@@ -9,7 +9,7 @@ security instruction set — and it serves it read-only.
 | Surface | Bin | Who uses it |
 |---|---|---|
 | CLI | `lxagents-security` | A person running it by hand or from a script |
-| MCP server | `lxagents-security-server` | An MCP client, an editor, an agent, or a connector |
+| Skill MCP server | `lxagents-security-server` | An MCP client, an editor, an agent, or a connector |
 
 Both share one implementation and one tool list, so a result produced through one is
 identical to the same result produced through the other. `npm test` pins that agreement.
@@ -47,7 +47,7 @@ with and no filesystem I/O on the read path. Containment is a property of the
 
 ## What ships
 
-* An MCP server over **stdio** and **streamable HTTP**, with a `/healthz` endpoint on the
+* A Skill MCP server over **stdio** and **streamable HTTP**, with a `/healthz` endpoint on the
   HTTP transport.
 * A CLI with `help`, `version`, `tools`, and `serve`.
 * A tool layer **derived from `content/` at boot** — one tool per file, no hand-written
