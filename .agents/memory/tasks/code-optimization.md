@@ -32,3 +32,8 @@ Landed: this record and its row in `memory-index.md`.
 Landed. `--help` lists `MCP_AUTH_TOKEN`. A new test scans `src/` for every `env.NAME` read and
 fails if `--help` leaves one out; it failed before the fix. The dead
 `activation-security.md` reference is gone from `src/app.js` and the express decision.
+
+### Task 3 — refactor/rpc-error
+
+Landed. `src/http/rpc-error.js` is the one JSON-RPC error envelope; `app.js` and the 401 in
+`auth.js` both use it. The response bodies are unchanged and the token tests pin them.
