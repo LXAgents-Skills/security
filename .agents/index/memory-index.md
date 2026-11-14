@@ -39,6 +39,7 @@ current request.
 | [`../memory/tasks/automation-hub.md`](../memory/tasks/automation-hub.md) | `content/automation.md` as the routing hub over every served file, and tool IDs prefixed with `lxagents_skills_security_`. |
 | [`../memory/tasks/local-http-token.md`](../memory/tasks/local-http-token.md) | `MCP_AUTH_TOKEN` required only when HTTP is reachable from a network; a loopback bind runs without one, behind the localhost `Host` allow-list. |
 | [`../memory/tasks/typescript-migration.md`](../memory/tasks/typescript-migration.md) | `src/` and `test/` moved to strict TypeScript, compiled to `dist/` by a `prepare` script on install; latest dependencies and a clean `npm audit`. Tool IDs and SDK calls unchanged. |
+| [`../memory/tasks/rust-migration.md`](../memory/tasks/rust-migration.md) | The server rewritten in Rust on `rmcp` and `axum`, with `content/` embedded at build time. Tool IDs, served text, CLI, env vars and HTTP refusals unchanged. |
 
 ## Maintenance
 
