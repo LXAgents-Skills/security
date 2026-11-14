@@ -1,0 +1,24 @@
+[package]
+name = "lxagents-security"
+version = "2.0.4"
+edition = "2024"
+rust-version = "1.88"
+description = "Read-only Skill MCP server delivering the global security instruction set for python, javascript/typescript, and go."
+license = "MIT"
+authors = ["LXAgents"]
+repository = "https://github.com/LXAgents-Skills/security"
+homepage = "https://github.com/LXAgents-Skills/security#readme"
+keywords = ["mcp", "model-context-protocol", "security", "agent-instructions", "lxagents"]
+publish = false
+build = "build.rs"
+
+[lib]
+name = "lxagents_security"
+path = "src/lib.rs"
+
+[dependencies]
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
