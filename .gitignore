@@ -12,3 +12,6 @@ mcps/
 
 # Compiled output - built by `npm install` (the prepare script), never committed
 dist/
+
+# Cargo build output - never committed
+/target/

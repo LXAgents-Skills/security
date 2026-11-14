@@ -31,3 +31,6 @@ mcps/
 .idea
 .vscode
 coverage/
+
+# Cargo build output
+target

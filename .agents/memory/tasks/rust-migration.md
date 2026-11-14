@@ -50,3 +50,19 @@ with session mode off and `json_response` on, since every tool answers in one me
 ### Task 1 - plan/rust-migration
 
 Landed: this record and its row in `memory-index.md`.
+
+### Task 2 - build/cargo
+
+Landed: `Cargo.toml` (package `lxagents-security`, edition 2024, `rust-version` 1.88, version
+still `2.0.4` to match `package.json` until the release task), `Cargo.lock`,
+`rust-toolchain.toml` (stable, with rustfmt and clippy), and `build.rs`, which writes an
+`include_str!` table of every `.md` under `content/` into `OUT_DIR`. The library has
+`identity.rs` (server ID, title, version from `CARGO_PKG_VERSION`, the tool prefix and the server
+instructions) and `instructions/` (`naming.rs`: derivation, overrides, the name shape and the
+64-character cap; `frontmatter.rs`: the single-line field reader; `mod.rs`: the surface, built
+once, refusing an invalid or long name, a collision, a missing description or an empty set).
+The surface sorts paths case-insensitively, so the tool order matches the TypeScript server's
+`localeCompare` order. `/target/` is ignored by git and Docker.
+
+Verified: 14 unit tests pass; clippy with `-D warnings` and `cargo fmt --check` are clean; the
+TypeScript suite still passes 69 of 69, since nothing it uses changed.
