@@ -6,8 +6,8 @@ description: Entry point for lxagents-security - a read-only Skill MCP server an
 # AGENTS.md
 
 This repository is `lxagents-security`: a Skill MCP server (`lxagents-security-server`) and a
-CLI (`lxagents-security`) over one implementation, Node.js 20+, ESM, TypeScript in `src/`
-compiled to `dist/` by `npm install`. It
+CLI (`lxagents-security`) over one implementation, in Rust on the official MCP Rust SDK
+(`rmcp`) with `axum` for HTTP, built by `cargo build --release`. It
 serves the **global security set** - the language and framework guides for Python,
 JavaScript/TypeScript, and Go - read-only, from [`content/`](content/).
 
@@ -203,8 +203,8 @@ verified. Memory under `.agents/memory/` is written freely and automatically —
 ## Version rule
 
 Never change this project's version without explicit user approval — see
-`agents://rules/versioning.md`. `package.json` is the version carrier, and
-`src/version.ts` reads it at import.
+`agents://rules/versioning.md`. `Cargo.toml` is the version carrier, and
+`src/identity.rs` reads it at compile time through `CARGO_PKG_VERSION`.
 
 ## No session links
 

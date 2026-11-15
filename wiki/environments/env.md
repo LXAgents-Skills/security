@@ -7,15 +7,16 @@ runs without it.
 
 | Variable | Default | Read by | Effect |
 |---|---|---|---|
-| `MCP_TRANSPORT` | `stdio` | `src/config.ts` | `stdio` or `http` (`streamable-http` is accepted too). `http` is **Streamable HTTP on `/mcp`** — it is the only HTTP transport this server has. |
-| `PORT` | `3000` | `src/config.ts` | The port the HTTP transport listens on. Ignored on stdio. |
-| `HOST` | `0.0.0.0` | `src/config.ts` | The interface the HTTP transport binds. Ignored on stdio. A loopback value (`127.0.0.1`, `localhost`, `::1`) makes the install local: no token required. `--host` overrides it. |
-| `MCP_ALLOWED_HOSTS` | *unset* | `src/config.ts` | Comma-separated `Host` allow-list. **Unset means no allow-list is applied.** Read on the HTTP transport only. |
-| `MCP_AUTH_TOKEN` | **none - required for HTTP off loopback** | `src/http/auth.ts` | The bearer token every HTTP request except `GET /healthz` must carry. At least 32 characters. **HTTP bound to anything but loopback will not start without it.** Optional on loopback, where it is still enforced if set. stdio never reads it. |
-| `MCP_CLUSTER_WORKERS` | *the CPU count* | `src/config.ts` | How many HTTP workers to fork. **`1` means no fork at all** — one process, one listener. Read on the HTTP transport only; stdio never forks. |
+| `MCP_TRANSPORT` | `stdio` | `src/config.rs` | `stdio` or `http` (`streamable-http` is accepted too). `http` is **Streamable HTTP on `/mcp`** — it is the only HTTP transport this server has. |
+| `PORT` | `3000` | `src/config.rs` | The port the HTTP transport listens on. Ignored on stdio. |
+| `HOST` | `0.0.0.0` | `src/config.rs` | The interface the HTTP transport binds. Ignored on stdio. A loopback value (`127.0.0.1`, `localhost`, `::1`) makes the install local: no token required. `--host` overrides it. |
+| `MCP_ALLOWED_HOSTS` | *unset* | `src/config.rs` | Comma-separated `Host` allow-list. **Unset means no allow-list is applied.** Read on the HTTP transport only. |
+| `MCP_AUTH_TOKEN` | **none - required for HTTP off loopback** | `src/http/auth.rs` | The bearer token every HTTP request except `GET /healthz` must carry. At least 32 characters. **HTTP bound to anything but loopback will not start without it.** Optional on loopback, where it is still enforced if set. stdio never reads it. |
+| `MCP_CLUSTER_WORKERS` | *the CPU count* | `src/config.rs` | How many tokio worker threads serve HTTP. **`0` or `1` means a single thread.** Always one process and one listener. Read on the HTTP transport only. |
 
-`0.0.0.0` is every IPv4 interface. It is **not** the dual-stack `::` that Node binds when
-no interface is named, so a client reaching the server over IPv6 needs `HOST=::`.
+`0.0.0.0` is every IPv4 interface, not the dual-stack `::`, so a client reaching the server
+over IPv6 needs `HOST=::`. An unusable `PORT`, such as `http` or `70000`, stops the server
+with a line naming the variable.
 
 ## `MCP_ALLOWED_HOSTS`
 
@@ -34,11 +35,10 @@ lxagents-security 2.0.4 bearer token required on every route except GET /healthz
 lxagents-security 2.0.4 MCP_ALLOWED_HOSTS is unset, so no Host header allow-list is applied.
 ```
 
-Set it before exposing the port anywhere but your own machine. The SDK applies host
-validation on its own only through its Express app factory, and only when the host is
-loopback; `HOST` defaults to `0.0.0.0`, so without an explicit list nothing is filtering
-the `Host` header in exactly the deployment — a container, a shared host — where it
-would matter.
+Set it before exposing the port anywhere but your own machine. The server applies the
+localhost list on its own only when it runs on loopback without a token; `HOST` defaults to
+`0.0.0.0`, so without an explicit list nothing is filtering the `Host` header in exactly the
+deployment — a container, a shared host — where it would matter.
 
 Unset is a skipped check rather than a guessed one, because a wrong allow-list silently
 refusing every request is a worse failure than an absent one, and the set is public
@@ -53,8 +53,8 @@ loopback server without one answers only a `localhost`, `127.0.0.1` or `[::1]` `
 `127.0.0.1` cannot read it through the browser. A server on any other address is reachable by
 anyone who can open a socket, so every request must prove the caller holds the token. An optional token would mean
 a deployment that forgot to set it ran open and said nothing, so instead the process refuses
-to start: one line on stderr naming the variable, and exit code `1`. `createApp` refuses to
-build without it too, so the check cannot be skipped by calling the app directly.
+to start: one line on stderr naming the variable, and exit code `1`. `http::app::build`
+refuses to build without it too, so the check cannot be skipped by calling the app directly.
 
 ```bash
 export MCP_AUTH_TOKEN="$(openssl rand -hex 32)"    # 64 hex characters; keep it, clients need it
@@ -82,73 +82,56 @@ The token gates the *service*, not the *text*: the set is public, so it does not
 confidential. No tool reads a credential, and none takes one as an argument.
 
 If a future *tool* needs a credential, the contract for that is
-[`../../../.agents/rules/secrets.md`](../../../.agents/rules/secrets.md): check
-`process.env` **inside the handler**, never at module scope, and never as a condition on
+[`../../../.agents/rules/secrets.md`](../../../.agents/rules/secrets.md): read the
+variable **inside the handler**, never at startup, and never as a condition on
 whether the tool is registered.
 
 ## `MCP_TRANSPORT`, `PORT` and `HOST`
 
 ```bash
 # stdio (default)
-npm start
+lxagents-security-server
 
-# streamable HTTP on 3000 (MCP_AUTH_TOKEN must be set)
-npm run start:http
+# streamable HTTP on 3000, local (no token needed on loopback)
+lxagents-security serve --http --host 127.0.0.1
 
-# streamable HTTP on another port
-npm run start:http -- --port 8080
+# streamable HTTP on another port, as a server (MCP_AUTH_TOKEN must be set)
+lxagents-security serve --http --host 0.0.0.0 --port 8080
 
-# the same, through the CLI
-lxagents-security serve --http --port 8080
+# the same, from the environment
+MCP_TRANSPORT=http HOST=0.0.0.0 PORT=8080 lxagents-security-server
+MCP_ALLOWED_HOSTS=security.example.com MCP_TRANSPORT=http lxagents-security-server
 ```
 
-`HOST` has no flag, because the CLI has one transport and one reason to want a
-different interface. Set it in the environment, which every shell can do:
-
-```bash
-HOST=127.0.0.1 npm run start:http
-MCP_ALLOWED_HOSTS=security.example.com npm run start:http
-```
-
-The CLI's `serve` command sets both variables from its flags, so `--http`, `--stdio`,
-and `--port` are equivalent to exporting them.
-
-`start:http` goes through `serve --http` rather than setting the variable in the script.
-A `VAR=value command` prefix is a shell feature, not a Node one: it works under `sh` and
-fails in `cmd.exe`, so the same script could not run on a stock Windows checkout. Setting
-the variable in `src/cli.ts` keeps one mechanism for both platforms and adds no
-dependency. `MCP_TRANSPORT=http node dist/index.js` still works wherever the shell
-supports it; it is the npm script, not the server, that avoids the prefix.
+The CLI's `serve` command sets the variables from its flags for that run only, so `--http`,
+`--stdio`, `--port` and `--host` are equivalent to exporting `MCP_TRANSPORT`, `PORT` and
+`HOST`.
 
 ## `MCP_CLUSTER_WORKERS`
 
-How many HTTP workers the primary forks. Each worker binds the same `PORT`; the kernel's
-shared handle and the round-robin scheduler distribute the connections.
+How many tokio worker threads serve the HTTP listener. There is one process and one listener
+whatever the value; the runtime spreads connections across its threads.
 
-Unset, the count is `os.availableParallelism()` — the CPUs this process was actually
-given, not a constant, so a two-CPU container gets two workers and a laptop does not get
-eight.
+Unset, the count is the CPUs this process was actually given, not a constant, so a two-CPU
+container gets two threads and a laptop does not get eight.
 
 ```bash
-# one worker per CPU (the default)
-npm run start:http
+# one thread per CPU (the default)
+lxagents-security serve --http --host 127.0.0.1
 
-# no fork at all: one process, one listener, the pre-cluster behaviour
-MCP_CLUSTER_WORKERS=1 npm run start:http
+# a single-threaded runtime
+MCP_CLUSTER_WORKERS=1 lxagents-security serve --http --host 127.0.0.1
 
-# four workers on a machine that reports two CPUs
-MCP_CLUSTER_WORKERS=4 npm run start:http
+# four threads on a machine that reports two CPUs
+MCP_CLUSTER_WORKERS=4 lxagents-security serve --http --host 127.0.0.1
 ```
 
-**`1` disables forking**, and that is the point of it rather than a special case: the
-same code answers with and without workers, so a difference between the two is a
-difference in the fork rather than in the transport.
+The startup log names the choice: `MCP_CLUSTER_WORKERS is 1, so a single thread serves every
+request.` or `serving HTTP from 4 worker threads`, followed by one `serving over http` line.
 
-The primary forks workers and serves nothing itself, so the `serving over http` line is
-printed once per worker — the number of lines is the number of open ports in the log.
-The primary also replaces a worker that dies, and gives up rather than respawning into a
-crash loop nobody is watching. It has no flag in the CLI for the same reason `HOST` has
-none: one transport, one reason to want a different value.
+The name is kept from the Node.js server, where the value was a count of forked `cluster`
+processes. Those processes, their respawning and their crash limit are gone: tokio uses every
+core from one process, so there is nothing to fork or to orphan.
 
 ## Related pages
 

@@ -21,18 +21,17 @@ The CLI (`lxagents-security`) and the Skill MCP server (`lxagents-security-serve
 doors onto one implementation. A tool reachable from one is reachable from the other,
 with the same name and the same description.
 
-* The tool surface is built in exactly one place: `src/instructions/from-content.ts`, from the
-  files in `content/`.
-* `src/server.ts` registers that array and exports `listTools()`; it does not declare
-  tools of its own.
-* `src/cli.ts` never maintains its own list - it reads the declaration from
-  `src/server.ts`.
-* `test/server.test.ts` pins the agreement. A change that makes the two surfaces
+* The tool surface is built in exactly one place: `src/instructions/mod.rs`, from the
+  files in `content/` that `build.rs` embeds.
+* `src/server.rs` serves that surface; it does not declare tools of its own.
+* `src/bin/lxagents-security.rs` never maintains its own list - it reads
+  `instructions::surface()`.
+* `tests/surface.rs` pins the agreement. A change that makes the two surfaces
   disagree fails the suite, and that failure is the point.
 
 ## Nothing writes to stdout except the CLI
 
-On the stdio transport, stdout **is** the JSON-RPC channel. A stray `console.log` on
+On the stdio transport, stdout **is** the JSON-RPC channel. A stray `println!` on
 the server path corrupts the protocol stream and the client reports a parse error
 that names nothing useful.
 
@@ -45,35 +44,33 @@ that names nothing useful.
 | Thing | Path |
 |---|---|
 | The served security set | `content/` |
-| The tool surface, derived from the set | `src/instructions/from-content.ts` |
-| Tool registration and `listTools()` | `src/server.ts` |
-| `ROOT`, `CONTENT_DIR`, and the version | `src/version.ts` |
-| CLI commands | `src/cli.ts` |
-| Compiled output, never committed | `dist/`, from `tsconfig.json` |
-| Transport and entry point | `src/index.ts` → `src/run.ts` → `src/stdio.ts` or `src/http/` |
-| Tests | `test/{subject}.test.ts` |
+| Embedding the set into the binary | `build.rs` |
+| The tool surface, derived from the set | `src/instructions/` |
+| The MCP handler | `src/server.rs` |
+| The server's identity and the version | `src/identity.rs` (version from `Cargo.toml`) |
+| CLI commands | `src/bin/lxagents-security.rs` |
+| Build output, never committed | `target/` |
+| Transport and entry point | `src/bin/lxagents-security-server.rs` → `src/run.rs` → `src/stdio.rs` or `src/http/` |
+| Tests | unit tests in `#[cfg(test)]` beside the code; integration tests in `tests/{subject}.rs` |
 
 ## Commands
 
 ```bash
-npm install       # Node 20+; compiles src/ to dist/ through prepare
-npm run build     # tsc, after a change to src/
-npm run typecheck # src/ and test/, no output
-npm test          # builds, then node --import tsx --test test/*.test.ts
-npm run cli -- tools
-npm start         # stdio
-npm run start:http
-npm run inspect   # MCP Inspector against the stdio server
+cargo build --release                       # Rust 1.88+; both binaries in target/release/
+cargo test                                  # unit, then integration tests against the binaries
+cargo clippy --all-targets -- -D warnings
+cargo fmt --check
+./target/release/lxagents-security tools
+./target/release/lxagents-security-server   # stdio
+./target/release/lxagents-security serve --http --host 127.0.0.1
 ```
 
 ## What must not be introduced
 
-* Committed build output. `dist/` is compiled from `src/` by `npm install` and `npm test`
-  and is ignored by git; a checked-in copy would drift from its source.
-* A second build tool. `tsc` is the build; there is no bundler, and the compiled files
-  keep the one-module-per-file shape of `src/`.
-* An `any`. `strict` is on, and a type that cannot be named yet is `unknown`, narrowed
-  where it is read.
+* Committed build output. `target/` is built by Cargo and is ignored by git; a checked-in
+  copy would drift from its source.
+* A second build tool. Cargo is the build, and `build.rs` does one thing: list `content/`
+  into the embedded table.
 * A second source of truth for the tool list, and a hand-written tool module beside the
   generator - see [`tool-authoring.md`](tool-authoring.md).
 * Shared instruction content. If it can be read from `agents://`, it must not exist

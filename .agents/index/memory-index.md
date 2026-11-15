@@ -23,7 +23,8 @@ current request.
 | File | Purpose |
 |---|---|
 | [`../memory/decisions/harness-branch-naming.md`](../memory/decisions/harness-branch-naming.md) | Why a harness-designated branch never overrides the branching strategy. |
-| [`../memory/decisions/express-for-http-transport.md`](../memory/decisions/express-for-http-transport.md) | Why the transport moved to express, and why the SDK's `hostHeaderValidation` is mounted natively rather than through a hand-written response shim. |
+| [`../memory/decisions/axum-for-http-transport.md`](../memory/decisions/axum-for-http-transport.md) | Why HTTP is axum around rmcp's stateless `StreamableHttpService`, why the checks wrap the whole route table, and why `MCP_CLUSTER_WORKERS` counts threads. Supersedes the express record. |
+| [`../memory/decisions/express-for-http-transport.md`](../memory/decisions/express-for-http-transport.md) | Superseded by the axum record. Why the Node.js transport moved to express, and why the SDK's `hostHeaderValidation` is mounted natively rather than through a hand-written response shim. |
 | [`../memory/decisions/http-bearer-token.md`](../memory/decisions/http-bearer-token.md) | Why the HTTP transport requires a bearer token and refuses to start without one, when this server had no authentication by design. |
 
 ## Tasks

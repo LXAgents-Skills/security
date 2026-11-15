@@ -1,212 +1,153 @@
 # Architecture
 
-Twelve source files, each with one job, and one generated instruction surface. There is no
-build step.
+One Rust crate: a library holding every responsibility in its own module, and two thin
+binaries over it. `content/` is compiled into the binary by `build.rs`, so the server needs no
+path to the set at run time.
 
 ```
+build.rs              lists content/**/*.md into an include_str! table in OUT_DIR
 src/
-  index.js          entry point: reads the config and calls run(); the only file that starts anything
-  run.js            picks stdio or streamable HTTP, and primary or worker
-  config.js         every environment variable but the token, read once into a frozen object
-  stdio.js          the stdio transport
-  http/
-    primary.js      forks the workers, respawns and drains them; refuses to start without a token
-    worker.js       listens, logs the startup lines, drains on a signal
-    app.js          the express application, as a pure factory — builds, never listens
-    auth.js         the bearer token: the strength check, and the middleware that enforces it
-    rpc-error.js    the one JSON-RPC error envelope every refusal uses
-  server.js         builds the McpServer, registers every instruction, exports listTools()
-  cli.js            the CLI: help, version, tools, serve
-  version.js        reads the version out of package.json, and holds ROOT and CONTENT_DIR
+  lib.rs              module wiring only
+  identity.rs         server ID, title, version (from Cargo.toml), tool prefix, server instructions
+  config.rs           every environment variable but the token, read once into a Config value
   instructions/
-    from-content.js builds the whole instruction surface from content/, once, at import
-content/            the published security set
+    mod.rs            the surface: built once from the embedded table, refused if unroutable
+    naming.rs         path to tool ID: folder dropped, .md off, kebab to snake, overrides, 64-char cap
+    frontmatter.rs    the single-line name/description reader
+  server.rs           the rmcp ServerHandler: list_tools and call_tool over the surface
+  run.rs              picks stdio or HTTP and builds the tokio runtime it needs
+  stdio.rs            the stdio transport
+  http/
+    mod.rs            token preflight, bind, startup lines, signal and drain
+    app.rs            the axum Router, as a pure builder: builds, never listens
+    host.rs           the Host allow-list middleware
+    auth.rs           the bearer token: the strength check and the middleware that enforces it
+    body.rs           the 4 MB limit and the JSON check
+    rpc_error.rs      the one JSON-RPC error envelope every refusal uses
+  bin/
+    lxagents-security-server.rs   reads the process environment and calls run
+    lxagents-security.rs          the CLI: help, version, tools, serve
+tests/                integration tests that drive the built binaries
+content/              the published security set
 ```
 
 ```
-cli.js ─▶ run.js ◀── index.js ─▶ config.js
-            │
-     ┌──────┴──────────┐
-     ▼                 ▼
- stdio.js       http/primary.js ─fork─▶ http/worker.js ─▶ http/app.js ─▶ http/auth.js
-     │                                                      │      └──▶ http/rpc-error.js
-     └──────────────▶ server.js ◀───────────────────────────┘
+bin/lxagents-security ─┐
+bin/lxagents-security-server ─▶ config ─▶ run ─┬─▶ stdio ──────────────┐
+                                               └─▶ http ─▶ http/app ─────┼─▶ server ─▶ instructions ─▶ identity
+                                                    host · auth · body · rpc_error
 ```
 
-**Nothing below `index.js` starts anything on import.** `app.js` returns an express app and
-nothing else: it does not listen and does not read the environment. `worker.js` owns the port
-and `primary.js` owns the fork. A file that both builds the app and binds a port cannot be
-reasoned about, or tested, without binding one. The transports are imported only once chosen,
-so a stdio server never loads express.
+**Nothing in the library starts anything on its own.** `http::app::build` returns a `Router`
+and does not listen or read the environment; `http::serve` owns the port. The binaries are the
+only code that reads the process environment, and `MCP_AUTH_TOKEN` is read once, in `run`, when
+the HTTP transport is chosen. The stdio path never reads it.
 
 ## Entry point and transports
 
-`src/index.ts` reads the configuration through `src/config.ts`, and `src/run.ts` serves either way:
+`config::from_process_env` reads the configuration, and `run::run` serves either way:
 
-* **stdio** (default) — one `McpServer` connected to a `StdioServerTransport` for the
-  life of the process. Never forked: stdout is the JSON-RPC channel, and a worker's copy
-  of it would corrupt the stream.
-* **streamable HTTP** — an express application exposing `GET /healthz` and `POST /mcp`,
-  served by `node:cluster` workers on one `PORT`.
+* **stdio** (default): one `SecurityServer` on rmcp's stdio transport, on a single-threaded
+  runtime. stdout is the JSON-RPC channel, so nothing else on this path writes to it. A pipe
+  closed before the handshake exits 0.
+* **streamable HTTP**: an axum application exposing `GET /healthz` and `POST /mcp`, served by
+  one listener on a tokio runtime.
 
-The HTTP transport is **stateless**: a fresh `McpServer` and transport are built for
-each request and closed when the response closes. That is deliberate — `McpServer`
-holds per-connection state, so hoisting one to module scope would leak state between
-unrelated callers.
+The HTTP transport is **stateless**: rmcp's `StreamableHttpService` runs with session mode off,
+JSON responses on, and `NeverSessionManager`, building a fresh `SecurityServer` per request. The
+handler holds only a reference to the immutable surface, so a fresh one costs nothing and shares
+nothing. A bare `tools/list` with no handshake is answered.
 
-The interface is named rather than defaulted. `listen(port)` with no host argument binds
-`::` — every IPv6 address plus IPv4-mapped ones — which reads as a decision to expose the
-server everywhere when it is really the absence of one. `HOST` names the interface, and
-its `0.0.0.0` default says on the startup line that the port is open on every interface.
+The interface is named rather than defaulted. `HOST` names it, and its `0.0.0.0` default says on
+the startup line that the port is open on every interface.
 
-`MCP_ALLOWED_HOSTS` guards what reaches it. When it is set, every request — including
-`/healthz` — is matched against it first, and a `Host` outside the list is refused with
-a 403. When it is unset, no list is applied, and the startup line says so. The matching
-is the SDK's `hostHeaderValidation`, mounted natively by `src/http/app.ts` — it is
-Express-shaped, refusing with `res.status(code).json(body)`, so an express app is what
-it expects and the earlier hand-written response shim is gone. The port-agnostic matching
-and the JSON-RPC refusal body therefore have one implementation rather than two.
+## The order a request is checked in
 
-### The body limit
+`http::app::build` wraps the whole route table as one service and layers three checks around it,
+in the order a request meets them:
 
-`express.json({ limit })` is 4 MB. An oversized body and a malformed one are both
-answered **400 / `-32700`**, and that collapse is deliberate: the hand-rolled body reader
-this replaced threw one failure for both, so a client was never taught to expect anything
-different for the second case. `X-Powered-By` is disabled — it would hand an
-unauthenticated caller the framework and its version for free.
+1. **`Host` allow-list** (`host.rs`), on every route, `/healthz` included. `MCP_ALLOWED_HOSTS`
+   when set; the localhost names when the server runs on loopback without a token; otherwise
+   none, and the startup line says so. A refusal is a 403 naming the host. The port is not part
+   of the match.
+2. **Bearer token** (`auth.rs`), on everything except exactly `GET /healthz`. A refusal is a 401
+   with `WWW-Authenticate`; it gives no route information.
+3. **Body** (`body.rs`), on `POST /mcp` only: at most 4 MB, and it must parse as JSON. An
+   oversized body and a malformed one get the same 400 / `-32700`, as they always have.
 
-## Workers
+The checks wrap the route table, not each route, on purpose. A layer added per route runs inside
+axum's method dispatch, which adds `Allow:` to a refused response and would tell a caller without
+the token which methods `/mcp` takes. rmcp's own `Host` check is turned off, so there is one list,
+not two that could disagree.
 
-On HTTP, the primary forks `MCP_CLUSTER_WORKERS` processes (default:
-`os.availableParallelism()`) and every worker binds the same `PORT`. The kernel's shared
-listening handle and the round-robin scheduler do the distribution, so there is no
-sticky-session logic to write and no `SO_REUSEPORT` set by hand — the scheduler already
-has the information such a scheme would have to reconstruct.
+Then the routes: `GET /healthz` returns `{ status, server, version }`; `POST /mcp` is the MCP
+endpoint; any other method on `/mcp` is a 405; any other path is a JSON-RPC 404. No response
+carries `X-Powered-By` or `Server`.
 
-`MCP_CLUSTER_WORKERS=1` means **no fork at all**: one process, one listener, the
-pre-cluster behaviour. That is what makes the cluster bisectable — the same code answers
-with and without workers, so a difference between them is a difference in the fork rather
-than in the transport.
+## Worker threads
 
-The primary binds nothing, so the startup lines in a container's log describe ports that
-are genuinely open, from the processes that opened them. A worker whose primary is gone
-exits on `disconnect`: it would otherwise hold the port for whoever starts next.
+On HTTP, `MCP_CLUSTER_WORKERS` sets how many tokio worker threads serve the one listener
+(default: the CPUs the process was given). `0` or `1` runs a single-threaded runtime. There are no
+child processes, so nothing is forked, respawned, or left holding the port if the process is
+killed. The Node server needed `cluster` processes to use more than one core; a tokio runtime
+does not.
 
 ### Shutdown drains before it closes
 
-`SIGINT` and `SIGTERM` run the same three steps, in this order: stop accepting
-connections, close the sockets that are idle, then wait for what is still in flight
-with a five-second ceiling before cutting it off. Idle keep-alive sockets are closed
-separately because `server.close()` waits on them, and a client that opened one and went
-quiet would otherwise hold the process open for a request that no longer exists.
-
-Because the transport is stateless there is no session to drain — what drains is the
-requests. The primary relays the signal to its workers and waits for the last one to
-go, so the port is genuinely closed before the process that started it is. A second
-signal during the drain is the operator saying they have stopped waiting, and it exits
-at once rather than queueing behind the first.
-
-### stdout belongs to the protocol
-
-On stdio, stdout **is** the JSON-RPC channel. Server-side logging goes to stderr and
-`serve` prints nothing of its own; only CLI commands write to stdout. A `console.log`
-on the server path corrupts the stream, and the client reports a parse error that
-points nowhere useful.
+`SIGINT` and `SIGTERM` stop the listener accepting, let in-flight requests finish, and cut off
+whatever is still running after five seconds. The process prints one `{signal}, draining` line
+and exits 0. A second signal during the drain exits at once: the operator has stopped waiting.
 
 ## The tool layer
 
-There is no hand-written tool in this repository. `src/instructions/from-content.ts` walks
-`CONTENT_DIR` once, at import, and builds one tool per `.md` file it finds:
+There is no hand-written tool. `build.rs` embeds every `.md` under `content/`, and
+`instructions::build_surface` turns the table into one `Instruction` per file, once:
 
-```js
-for (const path of markdownFiles()) {
-  const name = instructionNameFor(path);     // folder dropped, .md off, kebab → snake
-  const text = readFileSync(join(CONTENT_DIR, path), "utf8");
-  const { description } = parseFrontmatter(text);
-
-  files.set(name, path);
-  tools.push({
-    config: { name, description },
-    handler: async () => ({ content: [{ type: "text", text }] }),
-  });
+```rust
+for (path, text) in ordered {
+    let name = naming::tool_id_for(path);          // folder dropped, .md off, kebab → snake
+    // refuse an invalid name, one over 64 characters, or a collision
+    let description = frontmatter::parse(text)…;   // refuse a missing description
+    surface.push(Instruction { name, description, path, text });
 }
 ```
 
-`CONTENT_INSTRUCTIONS` is frozen at module scope and `INSTRUCTION_FILES` maps each tool name back to the
-file it serves. `src/server.ts` registers the array as-is:
+Paths are ordered case-insensitively, so the tool list is in the order the Node server listed it.
+Four things fail **at startup** rather than at the first call, because a set that cannot be
+routed on should stop the process and not mislead the caller: two files deriving one name, a name
+that is not a valid MCP tool name, a name over 64 characters, and a file with no frontmatter
+`description:`.
 
-```js
-const INSTRUCTION_MODULES = Object.freeze(CONTENT_INSTRUCTIONS);
-```
-
-Three things fail **at boot** rather than at the first call, because a set that cannot be
-routed on should fail the process and not the caller:
-
-* two files deriving the same tool name — one would silently shadow the other;
-* a file deriving a name that is not a valid MCP tool name;
-* a file with no frontmatter `description:` — a tool a client cannot choose between.
-
-The file is served whole, frontmatter included, byte-identical to disk. The frontmatter
-is part of the published text, not metadata to strip — and `description:` is load-bearing
-twice over, as both the tool description and the route a caller makes on it.
-
-No generated tool declares a schema, so `src/server.ts` registers with the
-three-argument `server.tool(name, description, handler)` form. There is no
-`config.schema` branch to take the four-argument form, and no code path by which an
-argument could be introduced without hand-writing a tool module beside the generator.
-
-## Reading from the set
-
-Everything is resolved at import, from the constant `CONTENT_DIR` in `src/version.ts`.
-A call is a map lookup and a string that was read once at startup: there is no filesystem
-I/O on the read path, and there is no path a caller could aim at anything with.
-
-The old defence — reject a `..` segment before calling the filesystem, then confirm the
-resolved path is still inside `CONTENT_DIR` — guarded a `path` argument. With no argument
-there is nothing to guard, so `src/content.js` was deleted rather than left in place with
-no caller, where a future reader could not tell whether it was load-bearing.
+The file is served whole, frontmatter included, byte-identical to the set. Every tool declares
+the input schema `{ "type": "object", "properties": {} }`, and `call_tool` is a lookup by name, so
+there is no argument for a caller to aim with and no filesystem I/O on the request path.
 
 ## Authentication
 
 **HTTP on any bind but loopback requires a bearer token; stdio and loopback HTTP do not.** A
-loopback server without a token gets the SDK's localhost `Host` allow-list instead. No tool in this repository
-reads a credential, and none takes one as an argument; the token belongs to the transport.
+loopback server without a token gets the localhost `Host` list instead. No tool reads a
+credential, and none takes one as an argument; the token belongs to the transport.
 
-`src/http/auth.ts` reads `MCP_AUTH_TOKEN` and `src/http/app.ts` mounts its middleware after the `Host`
-allow-list and ahead of the body parser and every route, with `GET /healthz` the one
-exemption. `createApp` throws without a usable token, and the primary in `src/http/primary.ts`
-checks first, so a missing one is a single line and exit code `1` rather than the same line
-from each worker and a respawn loop. The stdio path never reads the variable. The comparison is
-constant-time over SHA-256 digests, the token is never logged or echoed, and there is no
-query-string form and no flag that turns the check off.
+`run` checks the token before a runtime or a socket exists, so a missing or short one is a single
+line naming the fix and exit code `1`, whatever `MCP_CLUSTER_WORKERS` says. `http::app::build`
+refuses too, so an open server cannot come from forgetting an option. The comparison is
+constant-time over SHA-256 digests (`subtle`), the token is trimmed of surrounding whitespace,
+never logged or echoed, and there is no query-string form and no flag that turns the check off.
 
-The token gates who may use a deployed instance, not the text: the set is public. It is one
-shared value, so there is no per-client identity, and it is only as private as the connection
-it travels on, so TLS belongs in front. The reasoning is in the decision record
+The token gates who may use a deployed instance, not the text: the set is public. It is one shared
+value, so there is no per-client identity, and it is only as private as the connection it travels
+on, so TLS belongs in front. The reasoning is in
 [`.agents/memory/decisions/http-bearer-token.md`](../../.agents/memory/decisions/http-bearer-token.md).
-
-`MCP_ALLOWED_HOSTS` is a separate control: a filter on which `Host` values are answered at all,
-and it says nothing about who is asking.
-
-The template this repository was scaffolded from took one server-wide `API_KEY` and read
-it inside the handler of each tool that needed it. That pattern is still recorded in
-[`.agents/rules/secrets.md`](../../../.agents/rules/secrets.md) for a tool that does
-need one — the requirement is to read it at call time rather than at import, and never to
-make registration depend on it. The transport token is read at startup instead, because it
-has to fail closed before anything is served.
 
 ## The parity guarantee
 
-`src/server.ts` holds the only tool list. `listTools()` derives name/description pairs
-from the same `INSTRUCTION_MODULES` array used for registration, and `src/cli.ts` prints that
-rather than keeping a list of its own.
-
-`test/server.test.ts` asserts that what the CLI would print matches what an MCP client
-receives from `tools/list`, so the two surfaces cannot drift apart without failing the
-suite. The same file pins the bijection between the files in `content/` and the tools on
-the surface, in both directions.
+`instructions::surface()` is the only tool list. The CLI's `tools` command, stdio and HTTP all
+read it. `tests/surface.rs` asserts that what the CLI prints matches what an MCP client receives
+from `tools/list`, pins the bijection between the files in `content/` and the tools, and checks
+every tool's text against the file on disk. `tests/http.rs` asserts that HTTP and stdio serve the
+same tools with the same text.
 
 ## Related pages
 
-* [`overview.md`](overview.md) — what this project is.
-* [`../environments/setup.md`](../environments/setup.md) — running it.
+* [`overview.md`](overview.md): what this project is.
+* [`../environments/setup.md`](../environments/setup.md): running it.

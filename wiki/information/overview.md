@@ -1,6 +1,6 @@
 # Overview
 
-`@lxagents-skills/security` is a **dual-purpose** package: the same implementation is
+`lxagents-security` is a **dual-purpose** Rust crate: the same implementation is
 reachable as a terminal command and as a Skill MCP server. It serves one thing — the global
 security instruction set — and it serves it read-only.
 
@@ -12,7 +12,7 @@ security instruction set — and it serves it read-only.
 | Skill MCP server | `lxagents-security-server` | An MCP client, an editor, an agent, or a connector |
 
 Both share one implementation and one tool list, so a result produced through one is
-identical to the same result produced through the other. `npm test` pins that agreement.
+identical to the same result produced through the other. `cargo test` pins that agreement.
 
 ## The tools
 
@@ -43,17 +43,16 @@ tool opens a socket. The code that would write is absent rather than disabled, w
 what makes "pointing a repository at this server cannot mutate the set" a property of the
 code rather than a configuration someone can change.
 
-The read-only claim is now also structural on the way in. The set is read once at boot and
-every tool is a map lookup over what it read, so there is no path for a caller to traverse
-with and no filesystem I/O on the read path. Containment is a property of the
-`CONTENT_DIR` constant rather than of a check that runs against something a caller passed.
+The read-only claim is also structural on the way in. The set is compiled into the binary
+and every tool is a lookup over that text, so there is no path for a caller to traverse with
+and no filesystem I/O on the read path at all.
 
 ## What ships
 
 * A Skill MCP server over **stdio** and **streamable HTTP**, with a `/healthz` endpoint on the
   HTTP transport.
 * A CLI with `help`, `version`, `tools`, and `serve`.
-* A tool layer **derived from `content/` at boot** — one tool per file, no hand-written
+* A tool layer **derived from `content/` at build time and checked at startup** — one tool per file, no hand-written
   tool module, no argument anywhere.
 * A `Host` allow-list for the HTTP transport that is **off unless it is set**, and says
   so on startup when it is off.
@@ -65,10 +64,10 @@ with and no filesystem I/O on the read path. Containment is a property of the
 
 ## Requirements
 
-Node.js 20 or newer. Three runtime dependencies (`@modelcontextprotocol/sdk`, `express` and
-`zod`). The source is TypeScript in `src/`, compiled by `tsc` to `dist/`, which is what Node
-runs. `npm install` builds it through the `prepare` script, so a clone needs no extra step;
-`dist/` is never committed.
+Rust 1.88 or newer, to build. The server is the official MCP Rust SDK (`rmcp`) with `axum`
+for HTTP, on `tokio`. `cargo build --release` produces both binaries in `target/release/`,
+which is never committed. The built binary needs nothing beside it: no runtime, no
+`content/` folder.
 
 ## Related pages
 
