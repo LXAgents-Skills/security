@@ -66,3 +66,36 @@ The surface sorts paths case-insensitively, so the tool order matches the TypeSc
 
 Verified: 14 unit tests pass; clippy with `-D warnings` and `cargo fmt --check` are clean; the
 TypeScript suite still passes 69 of 69, since nothing it uses changed.
+
+### Task 3 - refactor/rust
+
+Landed. Dependencies: `rmcp` 3.10 (`server`, `transport-io`, `transport-streamable-http-server`),
+`axum` 0.8 (`http1`, `tokio`, `json`), `tokio`, `tokio-util`, `serde_json`, `sha2`, `subtle`,
+`http-body-util`; dev: `rmcp` client transports, `reqwest`, `tokio` full. Modules, one
+responsibility each: `config.rs` (every variable, read once at the entry point), `server.rs`
+(the rmcp `ServerHandler`: `list_tools` with an empty-object input schema, `call_tool` as a
+lookup), `stdio.rs`, `run.rs` (transport and runtime choice), `http/app.rs` (the router),
+`http/auth.rs`, `http/host.rs`, `http/body.rs`, `http/rpc_error.rs`, `http/mod.rs` (preflight,
+bind, startup lines, drain), and `src/bin/lxagents-security-server.rs` and
+`src/bin/lxagents-security.rs`. The TypeScript tree, `test/`, `package.json`, the lockfile and
+`tsconfig.json` are deleted. The `Dockerfile` builds in `rust:1-slim-bookworm` and runs the one
+binary as uid 10001 on `debian:bookworm-slim`.
+
+Found while porting: axum's per-route layers run inside method dispatch, which stamped
+`Allow: POST` on a 401 for `GET /mcp` and told a caller without the token which methods the path
+takes. The checks now wrap the route table as one service (`fallback_service`), and a test pins
+that no 401 carries `Allow`. rmcp's own `Host` check is disabled so the router's layer is the
+one place that decision is made. A stdio pipe closed before the handshake now exits 0, as the
+Node server did.
+
+Verified: stdio output against 2.0.4 captured before the change: the same 12 tools in the same
+order, identical descriptions, input schemas, server name, title and instructions, and every
+tool's text byte-identical. `tools` output is byte-identical; `--help` differs only in the
+`MCP_CLUSTER_WORKERS` line. 78 tests pass (24 unit, 14 surface, 40 HTTP); clippy with
+`-D warnings` and `cargo fmt --check` are clean. The release binary is 4.2 MB and serves from a
+directory with no `content/`. `docker build` could not run: the sandbox has no Docker daemon.
+
+Not carried over, because there is no process to test: the cluster tests for two PIDs on one
+port, respawning a killed worker, and orphaned workers after the primary is killed. Their thread
+counterparts (`MCP_CLUSTER_WORKERS=1` and `=N`, one drain line, a second signal) are in
+`tests/http.rs`.

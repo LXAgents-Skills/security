@@ -17,8 +17,21 @@ name = "lxagents_security"
 path = "src/lib.rs"
 
 [dependencies]
+axum = { version = "0.8", default-features = false, features = ["http1", "tokio", "json"] }
+http-body-util = "0.1.5"
+rmcp = { version = "3.10", default-features = false, features = ["server", "transport-io", "transport-streamable-http-server"] }
+serde_json = "1.0.154"
+sha2 = "0.11.1"
+subtle = "2.6.1"
+tokio = { version = "1.54.1", features = ["rt", "rt-multi-thread", "macros", "net", "signal", "io-std", "time", "sync"] }
+tokio-util = "0.7.20"
 
 [profile.release]
 lto = "thin"
 codegen-units = 1
 strip = true
+
+[dev-dependencies]
+reqwest = { version = "0.13.5", default-features = false, features = ["json"] }
+rmcp = { version = "3.10", default-features = false, features = ["client", "transport-child-process", "transport-streamable-http-client-reqwest", "transport-io"] }
+tokio = { version = "1.54.1", features = ["full"] }
