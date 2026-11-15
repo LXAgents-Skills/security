@@ -7,51 +7,39 @@ description: Current known state of lxagents-security - the derived per-file too
 
 ## What this repository is right now
 
-`lxagents-security` is a working dual-purpose Skill MCP server and CLI at version `2.0.4`. It
+`lxagents-security` is a working dual-purpose Skill MCP server and CLI at version `2.0.4` (the Rust rewrite releases as `2.0.5`). It
 serves the **global security set** read-only. It is no longer a template: `PROMPT.md` and
 `template-mode.md` are gone, and the tool surface is derived from the set.
 
 ## Stack
 
-Node.js 20+, ESM, strict TypeScript compiled by `tsc` to `dist/` (built on `npm install` by
-the `prepare` script, never committed). Runtime dependencies: `@modelcontextprotocol/sdk`,
-`express`, `zod`. Tests are `node --test` through `tsx`, no framework, against the compiled
-server. See [`../tasks/typescript-migration.md`](../tasks/typescript-migration.md).
+Rust 2024 edition (1.88+), on the official MCP Rust SDK `rmcp` 3.10 with `axum` 0.8 and
+`tokio`. `cargo build --release` produces both binaries in `target/` (never committed), with
+`content/` embedded by `build.rs`. Tests are `cargo test`: unit tests beside the code and
+integration tests in `tests/` against the built binaries. See
+[`../tasks/rust-migration.md`](../tasks/rust-migration.md). There is no Node.js code left.
 
 ## What exists
 
-* **The set.** `content/` holds `automation.md` (the routing hub), `SKILL.md`, the upstream Apache-2.0 `LICENSE.txt`, and
-  ten reference guides under `references/`, named
-  `<language>-<framework>-<stack>-security.md` across Python, JavaScript/TypeScript, and
-  Go. Copied verbatim from the workspace `.agents/security/security-best-practices/`
-  package, frontmatter intact.
-* **A derived tool surface.** `src/instructions/from-content.ts` walks `content/` once at
-  import and builds one tool per `.md` file, named after its own filename — twelve
-  tools, `automation`, `skill` and the ten reference guides, each ID prefixed
-  `lxagents_skills_security_`. `src/server.ts` registers the frozen
-  array as `INSTRUCTION_MODULES`, which is the whole surface. There is no hand-written tool in
-  this repository.
-* **No argument anywhere.** Every tool returns one file verbatim with its frontmatter
-  intact. A call is a map lookup over text read once at boot: no filesystem I/O on the
-  read path, and no path for a caller to traverse with. `src/content.js` and its `..`
-  guard were deleted with the argument they guarded — see
-  [`../tasks/per-file-tools.md`](../tasks/per-file-tools.md).
-* **Read-only, structurally.** No tool accepts a verb, takes a credential, or opens a
-  socket. The code that would write is absent rather than disabled.
-* **An express HTTP transport, served by workers.** `POST /mcp` is still Streamable
-  HTTP, the only HTTP transport, selected by `MCP_TRANSPORT=http`; the `node:http` server
-  and its hand-rolled body reader and `Host` shim are gone, replaced by `src/app.js` as
-  a pure factory. It names its interface with `HOST` (default `0.0.0.0`), drains
-  in-flight requests on `SIGINT`/`SIGTERM`, and applies `MCP_ALLOWED_HOSTS` when it is
-  set — **off when it is not**, and announced on startup when it is off. The path and the
-  transport did not change.
-* **`node:cluster` workers on one port.** `MCP_CLUSTER_WORKERS` forks the primary's
-  count — `os.availableParallelism()` by default — and each worker binds the same `PORT`.
-  `1` forks nothing, which keeps the change bisectable. stdio never forks, because stdout
-  is the JSON-RPC channel there.
-* **Surface parity.** `src/cli.ts` prints `listTools()` from `src/server.ts`;
-  `test/server.test.ts` pins the CLI list against the MCP client's `tools/list` in
-  memory, and `test/http.test.ts` pins it again over a socket.
+* **The set.** `content/` holds `automation.md` (the routing hub), `SKILL.md`, the upstream
+  Apache-2.0 `LICENSE.txt`, and ten reference guides under `references/`, named
+  `<language>-<framework>-<stack>-security.md` across Python, JavaScript/TypeScript, and Go.
+* **A derived tool surface.** `src/instructions/` builds one tool per embedded `.md` file,
+  once, named after its own filename — twelve tools, each ID prefixed
+  `lxagents_skills_security_`. There is no hand-written tool.
+* **No argument anywhere.** Every tool returns one file verbatim with its frontmatter intact.
+  A call is a lookup over text compiled into the binary: no filesystem I/O at all on the read
+  path, and no path for a caller to traverse with.
+* **Read-only, structurally.** No tool accepts a verb, takes a credential, or opens a socket.
+* **An axum HTTP transport.** `POST /mcp` is stateless Streamable HTTP through rmcp's
+  `StreamableHttpService`, selected by `MCP_TRANSPORT=http`, behind the `Host` allow-list, the
+  bearer token and the 4 MB JSON body check, in that order. It names its interface with `HOST`
+  (default `0.0.0.0`) and drains in-flight requests on `SIGINT`/`SIGTERM`.
+* **Worker threads, not processes.** `MCP_CLUSTER_WORKERS` sets tokio worker threads, one per
+  CPU by default; `0` or `1` is a single thread. One process, one listener.
+* **Surface parity.** The CLI's `tools` and both transports read `instructions::surface()`;
+  `tests/surface.rs` pins the CLI list against `tools/list` over stdio, and `tests/http.rs`
+  pins HTTP against stdio.
 * **Instruction system.** `AGENTS.md` plus `.agents/`, resolving the shared set through
   the `lxagents-agents-base` connector. Local rules: `repository`, `tool-authoring`,
   `secrets`. No overrides.
@@ -68,7 +56,7 @@ server. See [`../tasks/typescript-migration.md`](../tasks/typescript-migration.m
   `0.0.0.0`, so the port is open on every interface unless the operator narrows it, and the
   allow-list is off unless the operator sets it. There is one shared token, no TLS and no rate
   limiting in this process.
-* No CI workflow, no linter, no formatter.
+* No CI workflow. `cargo clippy -- -D warnings` and `cargo fmt --check` are run by hand.
 * `content/` is a copy. A change to the set belongs upstream in the workspace set first;
   this repository is a delivery surface for it, not its editor. One consequence is on
   record: `SKILL.md` does not enumerate the ten reference filenames, only their two
@@ -92,11 +80,10 @@ material in `content/`.
 
 ## Next obvious step
 
-Add CI that runs `npm test` on push. The suite is the only thing holding the two surfaces
-and the file-to-tool bijection together, and nothing runs it automatically.
+Add CI that runs `cargo test`, `cargo clippy --all-targets -- -D warnings` and
+`cargo fmt --check` on push. The suite is the only thing holding the two surfaces and the
+file-to-tool bijection together, and nothing runs it automatically. Build the Docker image
+once on a machine with a daemon: it has not been built since the Rust migration.
 
-Note that `test/http.test.ts` is timing-sensitive under a full parallel run on a slow
-or network filesystem: it spawns a child server per test and waits on a startup line.
-`the startup line announces that no allow-list is applied` failed in 2 of 8 full-suite runs
-on WSL `/mnt/c`, and passed every time the file was run alone. It is a harness race, not a
-server defect. Suspect the harness, not the server, before suspecting a change.
+`tests/http.rs` spawns a child server per test and waits up to 30 seconds for its startup
+line, so a slow machine is a slower suite rather than a failure.

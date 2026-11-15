@@ -5,6 +5,8 @@ description: Why the HTTP transport moved from node:http to express, and why the
 
 # Decision - express for the HTTP transport
 
+**Superseded on 2026-11-15** by [`axum-for-http-transport.md`](axum-for-http-transport.md): the server is Rust now. This record is the history of the Node.js transport.
+
 ## Context
 
 The HTTP transport was a `node:http` server with three hand-written pieces around it: a

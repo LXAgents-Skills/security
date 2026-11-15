@@ -99,3 +99,19 @@ Not carried over, because there is no process to test: the cluster tests for two
 port, respawning a killed worker, and orphaned workers after the primary is killed. Their thread
 counterparts (`MCP_CLUSTER_WORKERS=1` and `=N`, one drain line, a second signal) are in
 `tests/http.rs`.
+
+### Task 4 - docs/rust
+
+Landed: `README.md`, `wiki/information/overview.md`, `wiki/information/architecture.md`
+(rewritten for the crate's modules, the check order and the thread model),
+`wiki/environments/setup.md`, `env.md` and `docker.md`, `AGENTS.md` (stack line and version
+carrier), `.agents/wiki/context/repository-map.md`, the facts in `.agents/rules/repository.md`
+and `.agents/rules/tool-authoring.md` (paths, commands, build output; no rule added), and
+`.agents/memory/state/repository-state.md`. New decision record
+`decisions/axum-for-http-transport.md`, which supersedes the express record; both rows are in
+`memory-index.md`.
+
+Removed from `.agents/rules/repository.md` because it can no longer apply: the TypeScript-only
+"no `any`" bullet. A Rust replacement is offered as a discovery finding, not written.
+Left as it is: `.agents/rules/secrets.md`, whose example is a TypeScript handler for a
+hypothetical credentialed tool; also offered as a finding.

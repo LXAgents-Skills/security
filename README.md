@@ -5,16 +5,16 @@ The global security instruction set, served read-only over Skill MCP.
 - **Organization:** `LXAgents-Skills`
 - **Repository:** `security`
 - **Server ID:** `lxagents-security`
-- **Package:** `@lxagents-skills/security`
+- **Crate:** `lxagents-security` (built from source; not published)
 - **Dual-purpose:** a CLI (`lxagents-security`) and a Skill MCP server
   (`lxagents-security-server`).
 
 The set covers **Python**, **JavaScript/TypeScript**, and **Go** — the language and
 framework guides for writing secure code and reviewing code that is already written.
 One implementation behind two surfaces, so a result produced through the CLI is identical
-to the same result produced through an MCP client. Node.js 20+, ESM, TypeScript compiled to
-`dist/` by `npm install` (the `prepare` script), so a `git clone` and `npm install` is the
-whole install.
+to the same result produced through an MCP client. Rust, on the official MCP Rust SDK
+(`rmcp`) with `axum` for HTTP, so a `git clone` and `cargo build --release` is the whole
+install. The set is compiled into the binary, which runs from any directory.
 
 ## The tools
 
@@ -41,8 +41,8 @@ characters.
 Start at `lxagents_skills_security_automation`. It lists every other tool and the one condition that activates
 each, so a caller loads only the guides the request needs.
 
-The surface is derived from `content/` at boot, so adding a guide to the set is the whole
-procedure for adding a tool — there is no tool file to write. See
+The surface is derived from `content/` at build time and checked at startup, so adding a
+guide to the set and rebuilding is the whole procedure for adding a tool — there is no tool file to write. See
 [`.agents/rules/tool-authoring.md`](.agents/rules/tool-authoring.md).
 
 There is no write path. No tool takes an argument at all, no tool accepts a verb, no tool
@@ -52,10 +52,10 @@ rather than disabled, so pointing a repository at this server cannot mutate the 
 ## Quick start
 
 ```bash
-npm install
-npm test
-npm run cli -- tools
-npm start
+cargo build --release                               # Rust 1.88+
+cargo test
+./target/release/lxagents-security tools
+./target/release/lxagents-security-server           # stdio
 ```
 
 On the stdio default, no key, no environment variable, no configuration. The server
@@ -68,7 +68,7 @@ address — the `0.0.0.0` default, a container, a public host — will not start
 that is set is always enforced, on any bind.
 
 ```bash
-npm run start:http                                 # local: binds 127.0.0.1, no token needed
+lxagents-security serve --http --host 127.0.0.1   # local: no token needed
 
 export MCP_AUTH_TOKEN="$(openssl rand -hex 32)"    # server: keep it; clients need the same value
 lxagents-security serve --http --host 0.0.0.0
@@ -89,10 +89,10 @@ empty value means the guard is off** — not "allow everything on the list", whi
 same thing, but not "allow nothing", which is what the name suggests. The server
 announces on startup when it is unset, because the default is the unguarded one.
 
-The list is needed because the SDK applies host validation on its own only when the
-server is on loopback, and the HTTP transport binds `0.0.0.0` — so without an explicit
-list, nothing is filtering the `Host` header in exactly the deployment that reaches it
-from a network. Set it before exposing the port anywhere but your own machine. Full
+The list is needed because the HTTP transport binds `0.0.0.0` by default, and the server
+applies the localhost list on its own only when it runs on loopback without a token — so
+without an explicit list, nothing is filtering the `Host` header in exactly the deployment
+that reaches it from a network. Set it before exposing the port anywhere but your own machine. Full
 variable reference: [`wiki/environments/env.md`](wiki/environments/env.md).
 
 ## The set
@@ -120,8 +120,8 @@ Every `.md` file here is a tool. `LICENSE.txt` is not, and is never served.
 
 | Transport | How |
 |---|---|
-| Local stdio | `command: node`, `args: ["dist/index.js"]`, `cwd:` this checkout |
-| Local HTTP | `npm run start:http`, then `http://localhost:3000/mcp`. No token: it binds `127.0.0.1` |
+| Local stdio | `command: ./target/release/lxagents-security-server`, `cwd:` this checkout (or the absolute path to the binary) |
+| Local HTTP | `lxagents-security serve --http --host 127.0.0.1`, then `http://localhost:3000/mcp`. No token on loopback |
 | Remote | `https://<host>/mcp` with an `Authorization: Bearer <token>` header — a `.mcp.json` `headers` entry, `claude mcp add --transport http … --header`, the Agent SDK or the Inspector can send it |
 
 The `/mcp` path is not optional on either HTTP form. On a server, without the header every

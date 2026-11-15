@@ -1,6 +1,6 @@
 # Local Setup
 
-`@lxagents-skills/security` is **dual-purpose**. The same code is reachable two ways:
+`lxagents-security` is **dual-purpose**. The same code is reachable two ways:
 
 | Mode | What it is | Who uses it |
 |---|---|---|
@@ -12,24 +12,27 @@ same result produced in the other.
 
 ## Requirements
 
-Node.js 20 or newer.
+Rust 1.88 or newer, with Cargo. `rust-toolchain.toml` selects the stable toolchain with
+`rustfmt` and `clippy`.
 
 ```bash
-npm install       # installs, then compiles src/ to dist/ (the prepare script)
-npm test          # builds, then runs the suite through tsx
+git clone https://github.com/LXAgents-Skills/security
+cd security
+cargo build --release   # both binaries, in target/release/
+cargo test              # unit tests, then integration tests against the built binaries
+cargo clippy --all-targets -- -D warnings
+cargo fmt --check
 ```
 
-`npm run build` recompiles after a change to `src/`; the server always runs from `dist/`.
-`npm run typecheck` checks `src/` and `test/` together without writing anything.
+`content/` is compiled into the binary by `build.rs`, so a change to the set takes a rebuild,
+and the built binary runs from any directory with nothing beside it. `target/` is never
+committed.
 
-Three runtime dependencies: `@modelcontextprotocol/sdk`, `express` and `zod`. TypeScript,
-`tsx` and the type packages are devDependencies, needed to build and test only.
+An existing local registration that runs `node dist/index.js` must be changed to run
+`target/release/lxagents-security-server`: there is no Node.js code left in this repository.
 
-An existing local registration that points at `src/index.js` must be changed to
-`dist/index.js`: the source is TypeScript now, and Node runs the compiled output.
-
-There is also a container image, for a host that cannot run Node at all — see
-[`docker.md`](docker.md). It is not built by `npm test` and has never been built.
+There is also a container image — see [`docker.md`](docker.md). It is not built by
+`cargo test`.
 
 ## Authentication: HTTP only
 
@@ -53,19 +56,12 @@ on startup. Set it before exposing the port anywhere but your own machine. Full 
 ### Install
 
 ```bash
-# From a checkout, for development
-npm install
-npm link
+# From a checkout: build, then use the binary in place
+cargo build --release
+./target/release/lxagents-security --help
 
-# Or globally, from the registry
-npm install -g @lxagents-skills/security
-```
-
-Without installing anything:
-
-```bash
-node dist/cli.js --help
-npm run cli -- --help
+# Or put both binaries on PATH (~/.cargo/bin)
+cargo install --path .
 ```
 
 ### Use
@@ -79,17 +75,16 @@ lxagents-security tools
 `tools` prints every registered tool with its description:
 
 ```text
-golang_general_backend_security                    Go (Golang) Security Spec (Go 1.25.x, Standard Library, net/http) — …
-javascript_express_web_server_security             Express (Node.js) Web Security Spec (Express 5.x / 4.19.2+, Node.js LTS) — …
+lxagents_skills_security_automation                               Read this tool every session, first — …
+lxagents_skills_security_golang_general_backend_security          Go (Golang) Security Spec (Go 1.25.x, Standard Library, net/http) — …
 …
-skill                                              Perform language and framework specific security best-practice reviews …
+lxagents_skills_security_skill                                    Perform language and framework specific security best-practice reviews …
 ```
 
-One line per file in `content/`, named after that file. Eleven lines today; one more
-whichever guide is added to the set next.
+One line per file in `content/`, named after that file: twelve lines today.
 
-The list comes from `listTools()` in `src/server.ts` — the same list the Skill MCP server
-registers — so the two surfaces cannot disagree.
+The list comes from `instructions::surface()`, the same list the Skill MCP server serves, so
+the two surfaces cannot disagree.
 
 ### Exit codes
 
@@ -111,15 +106,13 @@ client at it. Either bin works: `lxagents-security-server` is the server directl
 {
   "mcpServers": {
     "lxagents-security": {
-      "command": "node",
-      "args": ["dist/index.js"],
-      "cwd": "/path/to/security"
+      "command": "/path/to/security/target/release/lxagents-security-server"
     }
   }
 }
 ```
 
-Once the package is installed globally, the bin can be named directly instead:
+After `cargo install --path .`, the binary can be named directly instead:
 
 ```json
 {
@@ -138,11 +131,10 @@ For a remote connector, point the client at `https://<host>/mcp`, including the
 
 ```bash
 # stdio
-npm start
+lxagents-security-server
 lxagents-security serve --stdio
 
 # streamable HTTP, local - binds 127.0.0.1, needs no token
-npm run start:http
 lxagents-security serve --http --host 127.0.0.1 --port 3000
 
 # streamable HTTP, server - needs a token, or it exits 1 and says why
@@ -162,18 +154,18 @@ curl -s http://localhost:3000/healthz
 ### Inspect it
 
 ```bash
-npm run inspect
+npx @modelcontextprotocol/inspector ./target/release/lxagents-security-server
 ```
 
-This runs the MCP Inspector against the stdio server, listing every tool and letting
-you call them.
+This runs the MCP Inspector (a Node.js tool, fetched on demand) against the stdio server,
+listing every tool and letting you call them.
 
 ### stdout belongs to the protocol
 
 On the stdio transport, stdout **is** the JSON-RPC channel. Logging goes to stderr,
 and `serve` prints nothing of its own. Only CLI commands write to stdout.
 
-A `console.log` on the server path is a bug that corrupts the protocol stream.
+A `println!` on the server path is a bug that corrupts the protocol stream.
 
 ## Related pages
 

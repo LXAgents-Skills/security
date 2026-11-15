@@ -9,13 +9,13 @@ away**, from the same entry point and the same payload.
 A client can spawn this server as a subprocess and speak JSON-RPC over its stdin and
 stdout, or reach it over HTTP. What the image buys either way:
 
-* **A pinned toolchain.** `node:22-alpine` instead of whatever is on the host.
-* **A clean dependency tree.** `npm ci --ignore-scripts --omit=dev` from the lockfile.
-  `npm ci` fails rather than resolving something the lockfile does not contain.
-* **No compiler at runtime.** The image builds in two stages: the first installs the full
-  tree and runs `npm run build`, the second installs production dependencies only and
-  copies the compiled `dist/` across. TypeScript and the `src/` sources never reach it.
-* **A non-root process.** The image ends as `USER node`.
+* **A pinned toolchain.** `rust:1-slim-bookworm` builds, instead of whatever is on the host.
+* **A locked dependency tree.** `cargo build --release --locked` fails rather than resolving
+  something `Cargo.lock` does not contain.
+* **No compiler at runtime.** The image builds in two stages: the first compiles the server,
+  with `content/` embedded, and the second, `debian:bookworm-slim`, carries the one binary.
+  No source, no toolchain and no `content/` folder reach it.
+* **A non-root process.** The image ends as uid `10001`.
 * **Isolation from the host**, which matters if the client is on a different machine.
 * **A network boundary**, if you run it as a service.
 
@@ -25,7 +25,7 @@ stdout, or reach it over HTTP. What the image buys either way:
 docker build -t lxagents-security:2.0.4 .
 ```
 
-Tag it with the version in `package.json` rather than `latest`. The image's job is to
+Tag it with the version in `Cargo.toml` rather than `latest`. The image's job is to
 be reproducible, and `latest` is the one tag that cannot be.
 
 ## Run — HTTP
@@ -48,12 +48,10 @@ form below needs no token.
 running, healthy, and connectable from nowhere. `EXPOSE 3000` documents the port; it
 does not publish it, which is the part that surprises people.
 
-**One worker per CPU.** On HTTP the server forks `os.availableParallelism()` workers and
-every one of them binds port 3000 through the cluster's shared handle, so `-p 3000:3000`
-publishes all of them at once and nothing else is needed. `MCP_CLUSTER_WORKERS=1` gives a
-single process instead, which is what you want when a memory limit, rather than a CPU
-limit, is the constraint. The `serving over http` line is printed once per worker, so
-its repeat count in the log is the number of workers actually listening.
+**One thread per CPU.** On HTTP the server runs one tokio worker thread per CPU the container
+was given, all serving the one listener on port 3000. `MCP_CLUSTER_WORKERS=1` gives a single
+thread instead. There is one process either way, so `docker stop` signals the server itself
+and it drains before it exits.
 
 Set `MCP_ALLOWED_HOSTS` when the container is reachable from anywhere but this machine —
 **the allow-list is off unless you set it**, and the server says so on startup:
@@ -102,14 +100,13 @@ default rather than the exception.
 
 | Path | Why |
 |---|---|
-| `content/` | The product. Copied, not generated — the only thing a repository change is expected to alter. |
-| `dist/` | The server, compiled from `src/` in the build stage. |
-| `package.json`, `package-lock.json` | Dependency resolution only. |
+| `/usr/local/bin/lxagents-security-server` | The server, compiled in the build stage, with the set from `content/` embedded in it. |
 
-`.dockerignore` keeps the rest out: `node_modules`, a host-built `dist`, `test`, `wiki`, `.agents`,
-`AGENTS.md`, `README.md`, `Dockerfile`, `.git`, local clones under `mcps/`, and local
-noise. **The image therefore cannot run its own test suite** — `npm test` needs `test/`
-— and the suite is a gate on the repository, not on the artifact.
+That is the whole image beyond the Debian base. The build stage copies only `Cargo.toml`,
+`Cargo.lock`, `build.rs`, `src/` and `content/`; `.dockerignore` also keeps a host-built
+`target`, `tests`, `wiki`, `.agents`, `.git`, local clones under `mcps/` and local noise out of
+the context. **The image cannot run its own test suite**, and the suite is a gate on the
+repository, not on the artifact.
 
 ## There is no compose file
 
@@ -123,18 +120,15 @@ service decides those things. It ships an image that can be deployed, not a depl
 docker run --rm -i -e MCP_TRANSPORT=stdio lxagents-security:2.0.4 < ../dev/null
 ```
 
-With stdin closed the server exits at once, so this checks that the entrypoint resolves
-and Node starts — not that the set is correct. To check the set, run `npm test` in a
+With stdin closed the server exits 0 at once, so this checks that the entrypoint resolves
+and the binary starts — not that the set is correct. To check the set, run `cargo test` in a
 checkout.
 
-> **This image has never been built end to end.** The environment this was written in
-> could not reach the npm registry from inside a build, so neither `EXPOSE`, nor the
-> `MCP_TRANSPORT` default, nor the entrypoint override has been verified by a build. What
-> has been checked is that every `COPY` source resolves against the real tree, that every
-> `.dockerignore` entry matches something in it, and that the runtime stage's steps work
-> outside Docker: `npm ci --ignore-scripts --omit=dev` against the lockfile, then a
-> compiled `dist/` beside `content/`, answers `/healthz` over HTTP and `tools/list` over
-> stdio with no compiler installed. Treat the rest as written-and-untested.
+> **The Rust image has not been built end to end yet.** The environment this was written in
+> had no Docker daemon. What has been checked is that every `COPY` source exists in the tree,
+> that `cargo build --release --locked --bin lxagents-security-server` succeeds, and that the
+> resulting binary, copied alone into an empty directory, serves stdio and HTTP. Treat the
+> image itself as written-and-untested until `docker build` has run.
 
 ## Related pages
 

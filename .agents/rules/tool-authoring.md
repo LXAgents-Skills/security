@@ -8,11 +8,10 @@ description: How a tool comes to exist - the surface is derived from content/, s
 **Adding a markdown file to `content/` is adding a tool.** There is no tool file to
 write, no import to add, and no entry to put in an array.
 
-The surface is built at boot by `src/instructions/from-content.ts`, which walks `CONTENT_DIR`
-once and makes one tool per `.md` file it finds. A contributor who follows the older
-text in this file — write `src/tools/{name}.ts`, import it, add it to `TOOL_MODULES` —
-would hand-write a module for a guide that already has a tool, and put two tools for one
-file on the surface.
+`build.rs` embeds every `.md` file under `content/`, and `src/instructions/mod.rs` makes one
+tool per embedded file, once, at startup. A contributor who hand-writes a tool beside the
+generator would put two tools for one file on the surface, or one the derivation cannot see.
+A change to `content/` reaches the binary on the next build.
 
 ## The derivation
 
@@ -34,11 +33,11 @@ cannot collide. So the folder is dropped, and the ten reference guides get long 
 consequence of naming a tool after the guide it serves rather than after its folder — a
 caller reading the tool list can tell what each one is without opening anything.
 
-`NAME_OVERRIDES` in `src/instructions/from-content.ts` is the escape hatch, for a filename that
+`NAME_OVERRIDES` in `src/instructions/naming.rs` is the escape hatch, for a filename that
 derives a name saying nothing useful or too long. **Every published ID is held to 64
 characters**, because several clients cap tool names there; the owner chose on 2026-11-11 to
 shorten only the base name, never the prefix, so four JavaScript guides use `js` and `js_ts`.
-An override carries the full ID, prefix included. Adding one is a naming decision, and it
+An override carries the base name; the prefix is added to it. Adding one is a naming decision, and it
 belongs to the owner, not to whoever happened to add the file.
 
 ## The surface is read-only
@@ -56,15 +55,16 @@ is no `path` to traverse with, so there is no traversal defence to keep correct.
 
 ## What the generator requires of a file
 
-Three things fail the process at boot rather than the first caller, because a set that
+Four things fail the process at startup rather than the first caller, because a set that
 cannot be routed on should not start:
 
 * **A `description:` in the frontmatter.** It is the tool description, and it is what a
   caller routes on. A file without one publishes a tool nobody can choose.
-* **A filename that derives a valid MCP tool name** — `^[a-z][a-z0-9_]{0,127}$`, and the
-  test suite holds every ID to 64 characters. A name
+* **A filename that derives a valid MCP tool name** — `^[a-z][a-z0-9_]{0,127}$`. A name
   starting with a digit or holding a character the client will not accept is a startup
   error naming the file and the fix.
+* **An ID of at most 64 characters.** A longer one is a startup error asking for a
+  shortened base in `NAME_OVERRIDES`.
 * **A filename no other file derives.** Two files deriving one name would silently shadow
   each other, so the second is a startup error naming both.
 
@@ -76,7 +76,7 @@ Write `description:` on one line.
 ## Editing the set
 
 `content/` is a copy of an upstream workspace set. It is served verbatim, with its
-frontmatter intact, on the next boot — there is no draft space inside it. A change to a
+frontmatter intact, from the next build — there is no draft space inside it. A change to a
 guide belongs upstream and is copied here; see [`repository.md`](repository.md).
 
 A file that must **not** be served still has to be a `.md` file to be skipped, so nothing
@@ -85,23 +85,22 @@ markdown. That is the whole mechanism, and it is why the licence is a `.txt`.
 
 ## Errors
 
-A malformed set throws a plain `Error` naming the file and what to do about it, at
-import. There is no runtime error path to design for: by the time a call arrives, the set
-has already been validated and read.
+A malformed set is a `SurfaceError` naming the file and what to do about it, printed at
+startup, with exit code 1. There is no runtime error path to design for: by the time a call
+arrives, the set has already been validated.
 
 ## Tests
 
-`test/server.test.ts` owns the surface, and it is written to fail if the derivation is
-broken:
+`tests/surface.rs` and the unit tests in `src/instructions/` own the surface, and they are
+written to fail if the derivation is broken:
 
 * every `.md` under `content/` has exactly one tool, and every tool maps back to one
   file — the bijection, in both directions, so a guide added and never surfaced is caught
   as loudly as a tool serving a file that is gone;
 * every name matches the derivation, and is a valid MCP tool name;
-* no tool declares an input schema, so no tool takes an argument;
+* every input schema is an object with no properties, so no tool takes an argument;
 * every tool returns its own file byte for byte, frontmatter included;
-* the total served text equals the total text on disk;
 * `LICENSE.txt` is not served.
 
-**If a change to `src/server.ts` or `src/instructions/from-content.ts` makes any of those true
+**If a change to `src/server.rs` or `src/instructions/` makes any of those true
 of a new tool, the test that should catch it does not exist yet — write it.**
