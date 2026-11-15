@@ -1,8 +1,5 @@
-# Installed inside the image, never copied in
-node_modules
-
 # Built in the image's first stage, never copied in from the host
-dist
+target
 
 # Version control and CI
 .git
@@ -10,7 +7,7 @@ dist
 .github
 
 # Not needed at runtime
-test
+tests
 wiki
 .agents
 AGENTS.md
@@ -31,6 +28,3 @@ mcps/
 .idea
 .vscode
 coverage/
-
-# Cargo build output
-target
