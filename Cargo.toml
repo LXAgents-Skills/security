@@ -12,6 +12,9 @@ keywords = ["mcp", "model-context-protocol", "security", "agent-instructions", "
 publish = false
 build = "build.rs"
 
+[lints.rust]
+unsafe_code = "forbid"
+
 [lib]
 name = "lxagents_security"
 path = "src/lib.rs"

@@ -79,5 +79,10 @@ cargo fmt --check
   network; no tool takes any argument at all. The read-only property is structural - the
   code that would write is absent - and it is the property a consuming repository depends
   on when it points at this server.
+* `unsafe` code, anywhere in the crate - `src/`, `build.rs`, `tests/`. `Cargo.toml` sets
+  `unsafe_code = "forbid"`, so the compiler refuses it and no `#[allow]` can lift it. That
+  includes `std::env::set_var` in a test: pass the value to the spawned binary instead.
+* A clippy warning. `cargo clippy --all-targets -- -D warnings` is clean before every
+  commit; a lint is fixed, never silenced with `#[allow]` unless the line says why.
 * An edit to a guide under `content/`. Those files are copied from the upstream
   workspace set; the change belongs there, and this repository follows it.
