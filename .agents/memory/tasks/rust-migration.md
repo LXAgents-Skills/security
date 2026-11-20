@@ -9,17 +9,17 @@ The owner asked for every repository in the organization to move from TypeScript
 repository per thread, using the official MCP Rust SDK (`rmcp`) and `axum` as the web framework.
 This record is this repository's part.
 
-**Status:** in progress.
+**Status:** done.
 
 ## The plan
 
 | # | Task | Branch | PR |
 |---|---|---|---|
-| 1 | The record | `plan/rust-migration` | |
-| 2 | Cargo scaffold: `Cargo.toml`, `Cargo.lock`, `build.rs` embedding `content/`, `rust-toolchain.toml`; the identity and the instruction surface (naming, frontmatter) with unit tests | `build/cargo` | |
-| 3 | The Rust server: rmcp handler, config, stdio, the axum HTTP app (Host allow-list, token, body limit, routes), both binaries, integration tests porting the TypeScript suite; the TypeScript tree, `package.json` and lockfile removed; a Rust `Dockerfile` | `refactor/rust` | |
-| 4 | README, `wiki/`, `AGENTS.md` and `.agents/` describe the Rust build; an axum decision record supersedes the express one | `docs/rust` | |
-| 5 | Release `2.0.5`, a patch by the owner's standing choice | `release/2.0.5` | |
+| 1 | The record | `plan/rust-migration` | #22 |
+| 2 | Cargo scaffold: `Cargo.toml`, `Cargo.lock`, `build.rs` embedding `content/`, `rust-toolchain.toml`; the identity and the instruction surface (naming, frontmatter) with unit tests | `build/cargo` | #23 |
+| 3 | The Rust server: rmcp handler, config, stdio, the axum HTTP app (Host allow-list, token, body limit, routes), both binaries, integration tests porting the TypeScript suite; the TypeScript tree, `package.json` and lockfile removed; a Rust `Dockerfile` | `refactor/rust` | #24 |
+| 4 | README, `wiki/`, `AGENTS.md` and `.agents/` describe the Rust build; an axum decision record supersedes the express one | `docs/rust` | #25 |
+| 5 | Release `2.0.5`, a patch by the owner's standing choice | `release/2.0.5` | #26 |
 
 **What stays:** every tool ID and description, the served text byte for byte, the server ID,
 title and instructions, the CLI commands and exit codes, every environment variable, the
@@ -115,3 +115,10 @@ Removed from `.agents/rules/repository.md` because it can no longer apply: the T
 "no `any`" bullet. A Rust replacement is offered as a discovery finding, not written.
 Left as it is: `.agents/rules/secrets.md`, whose example is a TypeScript handler for a
 hypothetical credentialed tool; also offered as a finding.
+
+### Task 5 - release/2.0.5
+
+Landed: `Cargo.toml` and `Cargo.lock` at `2.0.5`, `wiki/logs/2/0/5/CHANGELOG.md`, its row in
+`logs-index.md`, the image tags in the Dockerfile comments, `docker.md` and `env.md`, and
+`repository-state.md`. The run's plan file under `.agents/plans/` is removed. PRs #22-#26,
+rebase-merged in order.

@@ -12,6 +12,7 @@ description: Release history of lxagents-security, newest version first - what c
 
 | Version | Changelog | Summary |
 |---|---|---|
+| `2.0.5` | [`../../wiki/logs/2/0/5/CHANGELOG.md`](../../wiki/logs/2/0/5/CHANGELOG.md) | Rust: `rmcp` + `axum`, `content/` embedded at compile time; `MCP_CLUSTER_WORKERS` sets tokio threads; Rust two-stage image. Tool IDs and served text unchanged; 78 tests. Clients must register `target/release/lxagents-security-server`. |
 | `2.0.3` | [`../../wiki/logs/2/0/3/CHANGELOG.md`](../../wiki/logs/2/0/3/CHANGELOG.md) | `MCP_AUTH_TOKEN` is required only off loopback: a local HTTP install on `127.0.0.1` runs without one, behind the localhost `Host` allow-list; servers and the image are unchanged. `serve --host`; `start:http` binds `127.0.0.1`. Tests 64 → 69. Clients need do nothing. |
 | `2.0.4` | [`../../wiki/logs/2/0/4/CHANGELOG.md`](../../wiki/logs/2/0/4/CHANGELOG.md) | TypeScript: `src/` and `test/` are strict `.ts`, compiled to `dist/` by `npm install` (`prepare`); latest dependencies; `npm audit` 9 → 0; two-stage image. Tool IDs unchanged; 69 tests. Clients must point a local registration at `dist/index.js`. |
 | `2.0.2` | [`../../wiki/logs/2/0/2/CHANGELOG.md`](../../wiki/logs/2/0/2/CHANGELOG.md) | Every tool ID is prefixed `lxagents_skills_security_`; four JavaScript guides shortened to `js`/`js_ts` so every ID fits 64 characters; new `automation` hub tool lists every other tool and its trigger. Clients must call the new IDs. Tests 63 → 64. |

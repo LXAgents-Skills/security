@@ -22,7 +22,7 @@ stdout, or reach it over HTTP. What the image buys either way:
 ## Build
 
 ```bash
-docker build -t lxagents-security:2.0.4 .
+docker build -t lxagents-security:2.0.5 .
 ```
 
 Tag it with the version in `Cargo.toml` rather than `latest`. The image's job is to
@@ -34,7 +34,7 @@ The image sets `MCP_TRANSPORT=http`, so the transport does not have to be overri
 HTTP **requires `MCP_AUTH_TOKEN`**, so the token does have to be passed:
 
 ```bash
-docker run --rm -p 3000:3000 -e MCP_AUTH_TOKEN lxagents-security:2.0.4
+docker run --rm -p 3000:3000 -e MCP_AUTH_TOKEN lxagents-security:2.0.5
 curl -s http://localhost:3000/healthz
 ```
 
@@ -60,7 +60,7 @@ Set `MCP_ALLOWED_HOSTS` when the container is reachable from anywhere but this m
 docker run --rm -p 3000:3000 \
   -e MCP_AUTH_TOKEN \
   -e MCP_ALLOWED_HOSTS=security.example.com \
-  lxagents-security:2.0.4
+  lxagents-security:2.0.5
 ```
 
 See [Environment variables](env.md).
@@ -71,7 +71,7 @@ stdio means the container's stdin has to stay open and attached, and the transpo
 to be selected:
 
 ```bash
-docker run --rm -i -e MCP_TRANSPORT=stdio lxagents-security:2.0.4
+docker run --rm -i -e MCP_TRANSPORT=stdio lxagents-security:2.0.5
 ```
 
 **`-i` is not optional.** Without it Docker does not attach stdin, the server sees
@@ -85,7 +85,7 @@ To point an MCP client at it, give it the same command:
   "mcpServers": {
     "lxagents-security": {
       "command": "docker",
-      "args": ["run", "--rm", "-i", "-e", "MCP_TRANSPORT=stdio", "lxagents-security:2.0.4"]
+      "args": ["run", "--rm", "-i", "-e", "MCP_TRANSPORT=stdio", "lxagents-security:2.0.5"]
     }
   }
 }
@@ -117,7 +117,7 @@ service decides those things. It ships an image that can be deployed, not a depl
 ## Verifying an image
 
 ```bash
-docker run --rm -i -e MCP_TRANSPORT=stdio lxagents-security:2.0.4 < ../dev/null
+docker run --rm -i -e MCP_TRANSPORT=stdio lxagents-security:2.0.5 < ../dev/null
 ```
 
 With stdin closed the server exits 0 at once, so this checks that the entrypoint resolves
